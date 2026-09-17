@@ -30,6 +30,7 @@ function compareAST(astA, astB) {
     const nodeA = nodesA[i];
     const nodeB = nodesB[i];
 
+    // Node was added
     if (!nodeA && nodeB) {
       changes.push({
         type: "added",
@@ -39,6 +40,7 @@ function compareAST(astA, astB) {
       continue;
     }
 
+    // Node was deleted
     if (nodeA && !nodeB) {
       changes.push({
         type: "deleted",
