@@ -1,14 +1,39 @@
-import React from 'react';
-import { AlertTriangle, Check, ArrowRight, GitMerge, X, ShieldAlert } from 'lucide-react';
+﻿import React, { useEffect } from 'react';
+import { GitMerge, X, User, Check, ArrowRight, ShieldAlert } from 'lucide-react';
 
+/**
+ * ConflictResolutionModal
+ * Professional conflict review modal displaying side-by-side versions:
+ * - Block: System Architecture
+ * - Your Version: NodeMCU communicates with the server using Wi-Fi.
+ * - Latest Version — Arjun: ESP8266 communicates with the server using Wi-Fi.
+ * - Resolutions: [ Keep My Version ], [ Use Latest Version ], [ Review Later ]
+ * Updates mock frontend state and displays: "Conflict marked as resolved."
+ */
 const ConflictResolutionModal = ({
+  isOpen,
   conflict,
-  onKeepLocal,
-  onAcceptRemote,
-  onMergeBoth,
-  onDismiss,
+  onClose,
+  onResolve,
 }) => {
-  if (!conflict) return null;
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !conflict) return null;
+
+  const handleAction = (resolutionChoice) => {
+    onResolve(conflict.blockId, resolutionChoice);
+  };
 
   return (
     <div
@@ -16,75 +41,103 @@ const ConflictResolutionModal = ({
         position: 'fixed',
         inset: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(6px)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000,
-        padding: '20px',
+        zIndex: 10000,
+        padding: '16px',
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="conflict-modal-title"
     >
       <div
         style={{
           width: '100%',
           maxWidth: '680px',
-          backgroundColor: 'var(--bg-secondary)',
-          border: '1px solid var(--warning)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-xl)',
+          backgroundColor: '#18181b',
+          borderRadius: '16px',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'fadeIn 200ms ease-out',
         }}
       >
         {/* Modal Header */}
         <div
           style={{
-            padding: '16px 20px',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            padding: '18px 24px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(234, 88, 12, 0.08)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={20} color="var(--warning)" />
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                color: '#f97316',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <GitMerge size={18} />
+            </div>
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Concurrent AST Edit Conflict Detected
+              <h3 id="conflict-modal-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>
+                Conflict Detected
               </h3>
-              <p style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: '2px' }}>
-                Block <code style={{ fontFamily: 'var(--font-mono)' }}>{conflict.blockId}</code> was modified simultaneously
+              <p style={{ fontSize: '0.785rem', color: '#a1a1aa', margin: 0 }}>
+                Block: <strong style={{ color: '#fed7aa' }}>{conflict.blockTitle || 'System Architecture'}</strong>
               </p>
             </div>
           </div>
+
           <button
-            onClick={onDismiss}
-            className="btn-ghost"
-            style={{ padding: '4px' }}
-            title="Dismiss notification"
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#71717a',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '6px',
+            }}
+            title="Close modal (Esc)"
+            aria-label="Close modal"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Diff Comparison Body */}
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            <strong>{conflict.remoteAuthor}</strong> submitted changes to this block at{' '}
-            <span style={{ color: 'var(--text-primary)' }}>{conflict.timestamp}</span> while you were editing. Choose how you want to resolve this conflict:
-          </p>
+        {/* Modal Body: Comparison */}
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ fontSize: '0.875rem', color: '#d4d4d8', lineHeight: 1.5 }}>
+            Another collaborator updated this block concurrently. Choose which version you want to keep or review later.
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            {/* Local Version Column */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '16px',
+            }}
+          >
+            {/* Your Version */}
             <div
               style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                padding: '14px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(99, 102, 241, 0.06)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                padding: '16px',
                 display: 'flex',
                 flexDirection: 'column',
               }}
@@ -94,47 +147,74 @@ const ConflictResolutionModal = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
-                  paddingBottom: '6px',
-                  borderBottom: '1px solid var(--border-subtle)',
+                  marginBottom: '10px',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
                 }}
               >
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>
-                  Your Local Version
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#a5b4fc' }}>
+                  Your Version (Local)
                 </span>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Uncommitted</span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                    color: '#c7d2fe',
+                    fontWeight: 600,
+                  }}
+                >
+                  Kirubakar (You)
+                </span>
               </div>
+
               <div
                 style={{
-                  fontSize: '0.825rem',
-                  fontFamily: conflict.blockType === 'code' ? 'var(--font-mono)' : 'var(--font-sans)',
-                  color: 'var(--text-primary)',
-                  whiteSpace: 'pre-wrap',
+                  flex: 1,
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+                  lineHeight: 1.6,
+                  color: '#e0e7ff',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
                   minHeight: '80px',
-                  maxHeight: '180px',
-                  overflowY: 'auto',
-                  lineHeight: '1.5',
                 }}
               >
-                {conflict.localContent || <em>(Empty content)</em>}
+                {conflict.yourVersion || 'NodeMCU communicates with the server using Wi-Fi.'}
               </div>
+
               <button
-                onClick={onKeepLocal}
-                className="btn-primary"
-                style={{ marginTop: '12px', width: '100%', fontSize: '0.78rem', padding: '6px 10px' }}
+                onClick={() => handleAction('mine')}
+                style={{
+                  marginTop: '14px',
+                  padding: '9px 14px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                  color: '#c7d2fe',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  borderRadius: '8px',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
               >
-                <Check size={14} />
-                <span>Keep Mine</span>
+                <Check size={14} /> Keep My Version
               </button>
             </div>
 
-            {/* Remote Version Column */}
+            {/* Latest Version — Arjun */}
             <div
               style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid rgba(245, 158, 11, 0.4)',
-                borderRadius: 'var(--radius-md)',
-                padding: '14px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                padding: '16px',
                 display: 'flex',
                 flexDirection: 'column',
               }}
@@ -144,43 +224,64 @@ const ConflictResolutionModal = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
-                  paddingBottom: '6px',
-                  borderBottom: '1px solid var(--border-subtle)',
+                  marginBottom: '10px',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid rgba(16, 185, 129, 0.2)',
                 }}
               >
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--warning)' }}>
-                  Remote ({conflict.remoteAuthor})
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6ee7b7' }}>
+                  Latest Version — {conflict.changedBy || 'Arjun'}
                 </span>
-                <span style={{ fontSize: '0.68rem', color: 'var(--warning)' }}>AST Incoming</span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    color: '#a7f3d0',
+                    fontWeight: 600,
+                  }}
+                >
+                  Incoming
+                </span>
               </div>
+
               <div
                 style={{
-                  fontSize: '0.825rem',
-                  fontFamily: conflict.blockType === 'code' ? 'var(--font-mono)' : 'var(--font-sans)',
-                  color: 'var(--text-primary)',
-                  whiteSpace: 'pre-wrap',
+                  flex: 1,
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+                  lineHeight: 1.6,
+                  color: '#d1fae5',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
                   minHeight: '80px',
-                  maxHeight: '180px',
-                  overflowY: 'auto',
-                  lineHeight: '1.5',
                 }}
               >
-                {conflict.remoteContent || <em>(Empty content)</em>}
+                {conflict.latestVersion || 'ESP8266 communicates with the server using Wi-Fi.'}
               </div>
+
               <button
-                onClick={onAcceptRemote}
-                className="btn-secondary"
+                onClick={() => handleAction('latest')}
                 style={{
-                  marginTop: '12px',
-                  width: '100%',
-                  fontSize: '0.78rem',
-                  padding: '6px 10px',
-                  borderColor: 'rgba(245, 158, 11, 0.5)',
+                  marginTop: '14px',
+                  padding: '9px 14px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.25)',
+                  color: '#a7f3d0',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  borderRadius: '8px',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
                 }}
               >
-                <ArrowRight size={14} color="var(--warning)" />
-                <span>Accept Remote</span>
+                <Check size={14} /> Use Latest Version
               </button>
             </div>
           </div>
@@ -189,42 +290,34 @@ const ConflictResolutionModal = ({
         {/* Modal Footer */}
         <div
           style={{
-            padding: '12px 20px',
-            backgroundColor: 'var(--bg-tertiary)',
-            borderTop: '1px solid var(--border-subtle)',
+            padding: '16px 24px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            <ShieldAlert size={14} color="var(--warning)" />
-            <span>AST tree preserved without document corruption</span>
-          </div>
+          <span style={{ fontSize: '0.75rem', color: '#71717a' }}>
+            UI Prototype — Updates mock state upon resolution
+          </span>
 
           <button
-            onClick={onMergeBoth}
-            className="btn-secondary"
+            onClick={() => handleAction('later')}
             style={{
-              fontSize: '0.8rem',
-              padding: '6px 14px',
-              backgroundColor: 'var(--primary-light)',
-              color: 'var(--primary)',
-              borderColor: 'var(--primary)',
+              padding: '8px 16px',
+              backgroundColor: 'transparent',
+              color: '#a1a1aa',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              fontSize: '0.825rem',
+              cursor: 'pointer',
             }}
           >
-            <GitMerge size={14} />
-            <span>Smart Merge Both</span>
+            Review Later
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.96); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 };

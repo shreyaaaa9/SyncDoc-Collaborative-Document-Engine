@@ -1,93 +1,90 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import { fetchDocumentById, updateDocument } from '../../api/documentApi';
 import HeadingBlock from './HeadingBlock';
 import ParagraphBlock from './ParagraphBlock';
 import CodeBlockComp from './CodeBlockComp';
-import CollaborationHeader from '../collaboration/CollaborationHeader';
-import CollaboratorsPanel from '../collaboration/CollaboratorsPanel';
-import VersionHistoryDrawer from '../collaboration/VersionHistoryDrawer';
-import ConflictResolutionModal from '../collaboration/ConflictResolutionModal';
-import NotificationToasts from '../collaboration/NotificationToasts';
-import RemoteCursorOverlay from '../collaboration/RemoteCursorOverlay';
-import DevSimulationBar from '../collaboration/DevSimulationBar';
-import AstTreeViewer from '../collaboration/AstTreeViewer';
 
-import { useConnectionStatus } from '../../hooks/useConnectionStatus';
+// Collaboration Components (Member 2 — Week 1)
+import ConnectionStatus from '../collaboration/ConnectionStatus';
+import CollaborationSidebar from '../collaboration/CollaborationSidebar';
+import ConflictNotification from '../collaboration/ConflictNotification';
+import ConflictResolutionModal from '../collaboration/ConflictResolutionModal';
+import NotificationList from '../collaboration/NotificationList';
+import PresenceIndicator from '../collaboration/PresenceIndicator';
+
 import { useCollaboration } from '../../hooks/useCollaboration';
-import { useConflictResolver } from '../../hooks/useConflictResolver';
-import { useDocumentHistory } from '../../hooks/useDocumentHistory';
-import { Trash2, Type, AlignLeft, Code, FileText, ShieldAlert, Cpu, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  Trash2,
+  Plus,
+  ArrowLeft,
+  Save,
+  Users,
+  AlertTriangle,
+  History,
+  CheckCircle2,
+  Sparkles,
+  Layers,
+  HelpCircle,
+  Menu,
+} from 'lucide-react';
 
 const generateId = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const BlockEditor = ({ documentId, onBack }) => {
   const [doc, setDoc] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [showCollaborators, setShowCollaborators] = useState(true);
-  const [showAstTree, setShowAstTree] = useState(false);
-  const [activeSelfBlockId, setActiveSelfBlockId] = useState('blk_para_spec');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [focusedBlockId, setFocusedBlockId] = useState('blk_para_2');
 
-  // Notification helper
-  const addNotification = useCallback((notif) => {
-    const id = `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    setNotifications((prev) => [...prev, { ...notif, id }]);
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    }, 4500);
-  }, []);
-
-  const dismissNotification = useCallback((id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
-
-  // Collaboration Hooks
-  const connection = useConnectionStatus(addNotification);
-  const {
-    collaborators,
-    activeUsers,
-    setCurrentUserBlock,
-    simulateUserJoin,
-    simulateUserLeave,
-  } = useCollaboration(addNotification);
-
-  // Handle resolving a block after a conflict
-  const handleResolveBlockContent = useCallback((blockId, resolvedContent) => {
+  // Callback to update block content from conflict resolution or history restore
+  const handleDocumentUpdate = useCallback((target, newContent) => {
     setDoc((prev) => {
       if (!prev) return prev;
+      if (target === '__FULL_RESTORE__') {
+        return { ...prev, blocks: newContent };
+      }
       return {
         ...prev,
-        blocks: prev.blocks.map((b) => (b.id === blockId ? { ...b, content: resolvedContent } : b)),
+        blocks: prev.blocks.map((b) => (b.id === target ? { ...b, content: newContent } : b)),
       };
     });
   }, []);
 
-  const conflictResolver = useConflictResolver(handleResolveBlockContent, addNotification);
+  // Hook for collaboration state & mock actions
+  const {
+    collaborators,
+    activeUsers,
+    connectionStatus,
+    lastSynchronized,
+    latencyMs,
+    setConnectionStatus,
+    notifications,
+    addNotification,
+    dismissNotification,
+    activeConflict,
+    isConflictModalOpen,
+    setIsConflictModalOpen,
+    resolveConflict,
+    versionHistory,
+    restoreVersion,
+    simulateUserJoin,
+    simulateUserLeave,
+    triggerConflict,
+    setCurrentUserBlock,
+  } = useCollaboration(handleDocumentUpdate);
 
-  // Document history hook
-  const handleRestoreSnapshot = useCallback((blocksSnapshot) => {
-    setDoc((prev) => (prev ? { ...prev, blocks: blocksSnapshot } : prev));
-  }, []);
-
-  const docHistory = useDocumentHistory(doc, handleRestoreSnapshot, addNotification);
-
-  // Fetch document data
+  // Load document on mount
   useEffect(() => {
     fetchDocumentById(documentId)
       .then((data) => {
         setDoc(data);
-        addNotification({
-          type: 'info',
-          title: 'Technical Spec Loaded',
-          message: `AST Engine synchronized for "${data.title}"`,
-        });
       })
       .catch((err) => {
-        console.error(err);
+        console.error('Failed to load document', err);
       });
-  }, [documentId, addNotification]);
+  }, [documentId]);
 
-  // Block handlers
+  // Block handlers from Member 1
   const handleContentChange = (id, content) => {
     if (!doc) return;
     setDoc({
@@ -96,32 +93,31 @@ const BlockEditor = ({ documentId, onBack }) => {
     });
   };
 
-  const handleBlockFocus = (id) => {
-    setActiveSelfBlockId(id);
-    setCurrentUserBlock(id);
-  };
-
   const addBlock = (type) => {
     if (!doc) return;
     const newBlock = {
       id: generateId(),
       type,
       content: '',
-      astNodeType: type === 'heading' ? 'HeadingNode' : type === 'code' ? 'CodeBlockNode' : 'ParagraphNode',
       ...(type === 'heading' ? { level: 2 } : {}),
-      ...(type === 'code' ? { language: 'typescript' } : {}),
+      ...(type === 'code' ? { language: 'javascript' } : {}),
     };
     setDoc({ ...doc, blocks: [...doc.blocks, newBlock] });
     addNotification({
       type: 'info',
-      title: `Added ${type} AST Node`,
-      message: 'New structural AST node appended without layout conflict',
+      title: 'Block Added',
+      message: `Added new ${type} block to document.`,
     });
   };
 
   const deleteBlock = (id) => {
     if (!doc) return;
     setDoc({ ...doc, blocks: doc.blocks.filter((b) => b.id !== id) });
+    addNotification({
+      type: 'info',
+      title: 'Block Removed',
+      message: 'Block deleted from document.',
+    });
   };
 
   const handleSave = async () => {
@@ -131,10 +127,9 @@ const BlockEditor = ({ documentId, onBack }) => {
       await updateDocument(doc._id, { title: doc.title, blocks: doc.blocks });
       addNotification({
         type: 'success',
-        title: 'Document Saved',
-        message: 'All AST nodes synchronized to database',
+        title: 'Saved',
+        message: 'Document saved successfully.',
       });
-      docHistory.recordSnapshot(`Checkpoint by User A at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       console.error('Save failed', err);
     } finally {
@@ -142,331 +137,483 @@ const BlockEditor = ({ documentId, onBack }) => {
     }
   };
 
-  // Execution of the user's EXACT Use Case:
-  // "Two engineers open a technical spec in SyncDoc. As User A types a new paragraph,
-  // User B concurrently adds a code block lower down the page. The system AST conflict resolution
-  // ensures neither edit is lost. Both users see live visual block state indicators showing who is editing what,
-  // preventing layout-destructive overwrites in real-time."
-  const handleRunTwoEngineersUseCase = () => {
-    if (!doc) return;
-
-    addNotification({
-      type: 'info',
-      title: '▶️ Running Use Case Simulation',
-      message: 'Two engineers concurrently editing technical spec...',
-    });
-
-    // Step 1: User A focuses on Paragraph Block
-    setActiveSelfBlockId('blk_para_spec');
-
-    // Step 2: User B concurrently adds a new Code Block lower down the page
-    const userBCodeBlockId = `blk_code_${Date.now()}`;
-    const userBCodeBlock = {
-      id: userBCodeBlockId,
-      type: 'code',
-      language: 'typescript',
-      astNodeType: 'CodeBlockNode',
-      content: '// User B (Engineer 2) Concurrent AST Mutation\nexport function resolveAstNodes(treeA: AstTree, treeB: AstTree) {\n  return mergeAstDistinctBranches(treeA, treeB);\n}',
-    };
-
-    setDoc((prev) => ({
-      ...prev,
-      blocks: [...prev.blocks, userBCodeBlock],
-    }));
-
-    // Update User B's live focus to that block
-    const userB = collaborators.find((u) => u.id === 'user_b');
-    if (userB) {
-      userB.currentBlockId = userBCodeBlockId;
-    }
-
-    setTimeout(() => {
-      addNotification({
-        type: 'success',
-        title: 'AST Concurrent Merge Succeeded!',
-        message: 'User A paragraph + User B code block merged into AST with 0 layout overwrites.',
-      });
-    }, 900);
-  };
-
-  // Simulate an overlapping conflict on the SAME AST node
-  const handleSimulateConflict = () => {
-    if (!doc || !doc.blocks || doc.blocks.length === 0) return;
-    const targetBlock = doc.blocks.find((b) => b.id === 'blk_para_spec') || doc.blocks[0];
-
-    conflictResolver.triggerConflict({
-      blockId: targetBlock.id,
-      blockType: targetBlock.type,
-      localContent: targetBlock.content,
-      remoteContent: `${targetBlock.content}\n\n[User B Concurrent Edit]: Updated AST node validation rules for distributed peer replication.`,
-      remoteAuthor: 'User B (Engineer 2 - Shreya)',
-    });
+  const handleBlockFocus = (id) => {
+    setFocusedBlockId(id);
+    setCurrentUserBlock(id);
   };
 
   if (!doc) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>
-        <p>Loading collaborative technical spec workspace...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#a1a1aa' }}>
+        <p>Loading document...</p>
       </div>
     );
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      {/* Collaboration Top Header */}
-      <CollaborationHeader
-        docTitle={doc.title}
-        onBack={onBack}
-        connection={connection}
-        collaborators={collaborators}
-        isSaving={saving}
-        onSave={handleSave}
-        onToggleHistory={docHistory.toggleHistory}
-        onToggleCollaborators={() => setShowCollaborators((prev) => !prev)}
-        historyCount={docHistory.history.length}
-      />
+  // Active online collaborator count
+  const onlineCollaboratorsCount = collaborators.filter((c) => c.status !== 'offline').length;
 
-      {/* Main Workspace Body */}
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#09090b', color: '#f4f4f5', overflow: 'hidden' }}>
+      {/* Top Navigation / Collaboration Toolbar */}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 20px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#18181b',
+          zIndex: 30,
+        }}
+      >
+        {/* Left: Back & Doc Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <button
+            onClick={onBack}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              color: '#f4f4f5',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8125rem',
+            }}
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={15} /> Dashboard
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                color: '#f4f4f5',
+                maxWidth: '280px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              title={doc.title}
+            >
+              {doc.title}
+            </span>
+            <span
+              style={{
+                fontSize: '0.7rem',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                color: '#a5b4fc',
+                fontWeight: 600,
+              }}
+            >
+              SyncDoc v1.0
+            </span>
+          </div>
+        </div>
+
+        {/* Center/Right: Action Buttons & Collaboration Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Quick Simulation Trigger for Testing Conflict */}
+          <button
+            onClick={triggerConflict}
+            style={{
+              padding: '6px 10px',
+              fontSize: '0.75rem',
+              backgroundColor: activeConflict ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+              border: `1px solid ${activeConflict ? 'rgba(249, 115, 22, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+              color: activeConflict ? '#fdba74' : '#a1a1aa',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+            }}
+            title="Simulate / Trigger an incoming editing conflict"
+          >
+            <AlertTriangle size={13} color={activeConflict ? '#f97316' : '#a1a1aa'} />
+            <span>{activeConflict ? 'Conflict Active' : 'Simulate Conflict'}</span>
+          </button>
+
+          {/* Connection Status Component (Top-right area of document editor toolbar) */}
+          <ConnectionStatus
+            status={connectionStatus}
+            lastSynchronized={lastSynchronized}
+            latencyMs={latencyMs}
+            onChangeStatus={setConnectionStatus}
+          />
+
+          {/* Save Button */}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              padding: '6px 14px',
+              backgroundColor: '#6366f1',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '0.8125rem',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+            }}
+          >
+            <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+          </button>
+
+          {/* Sidebar Toggle Button */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: isSidebarOpen ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              border: `1px solid ${isSidebarOpen ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.12)'}`,
+              borderRadius: '8px',
+              color: isSidebarOpen ? '#a5b4fc' : '#f4f4f5',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+            }}
+            title="Toggle Collaboration Panel"
+            aria-label="Toggle Collaboration Panel"
+          >
+            <Users size={15} />
+            <span className="sidebar-btn-text">Collaborators</span>
+            <span
+              style={{
+                fontSize: '0.675rem',
+                padding: '1px 6px',
+                borderRadius: '999px',
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                color: '#34d399',
+              }}
+            >
+              {onlineCollaboratorsCount}
+            </span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace Layout */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {/* Editor Area */}
+        {/* Editor Main Content Area */}
         <main
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '28px 24px 130px 24px',
+            padding: '30px 24px 80px 24px',
             display: 'flex',
             justifyContent: 'center',
           }}
         >
-          <div style={{ width: '100%', maxWidth: '820px' }}>
-            {/* Live Problem Statement & Use Case Banner */}
-            <div
-              style={{
-                backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                border: '1px solid rgba(99, 102, 241, 0.25)',
-                borderRadius: 'var(--radius-md)',
-                padding: '12px 16px',
-                marginBottom: '20px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Sparkles size={14} />
-                  <span>SyncDoc Project Use Case: Real-Time AST Non-Destructive Editing</span>
-                </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <CheckCircle2 size={13} />
-                  <span>Layout Protection Active</span>
-                </span>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
-                <strong>Scenario:</strong> Two engineers open a technical spec in SyncDoc. As User A types a new paragraph, User B concurrently adds a code block lower down the page. The system's AST conflict resolution ensures neither edit is lost, with live visual block state indicators preventing layout-destructive overwrites.
-              </p>
-            </div>
+          <div style={{ width: '100%', maxWidth: '760px' }}>
+            {/* Conflict Notification Banner (Section 5) */}
+            {activeConflict && (
+              <ConflictNotification
+                conflict={activeConflict}
+                onReviewChanges={() => setIsConflictModalOpen(true)}
+                onKeepMine={() => resolveConflict(activeConflict.blockId, 'mine')}
+                onUseLatest={() => resolveConflict(activeConflict.blockId, 'latest')}
+                onResolveLater={() => resolveConflict(activeConflict.blockId, 'later')}
+              />
+            )}
 
             {/* Document Title Header */}
-            <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ marginBottom: '24px' }}>
               <input
                 value={doc.title}
                 onChange={(e) => setDoc({ ...doc, title: e.target.value })}
-                placeholder="Document Title..."
+                placeholder="Document Title"
                 style={{
-                  width: '100%',
                   fontSize: '1.75rem',
                   fontWeight: 800,
-                  color: 'var(--text-primary)',
-                  backgroundColor: 'transparent',
+                  width: '100%',
+                  background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  letterSpacing: '-0.025em',
+                  color: '#f4f4f5',
+                  padding: '4px 0',
                 }}
               />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span>ID: {doc._id}</span>
-                <span>•</span>
-                <span>{doc.blocks.length} AST Structural Nodes</span>
-                <span>•</span>
-                <span style={{ color: 'var(--success)' }}>2 Engineers in Session (User A + User B)</span>
-              </div>
             </div>
 
-            {/* Block Insertion Toolbar */}
+            {/* Add Block Toolbar (Preserving Member 1 Functionality) */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '20px',
+                marginBottom: '24px',
                 padding: '8px 12px',
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#18181b',
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                flexWrap: 'wrap',
               }}
             >
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>
-                Insert AST Node:
+              <span style={{ fontSize: '0.75rem', color: '#a1a1aa', marginRight: '6px', fontWeight: 600 }}>
+                + Add Block:
               </span>
-              <button onClick={() => addBlock('heading')} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.78rem' }}>
-                <Type size={14} color="var(--primary)" />
-                <span>+ Heading</span>
+              <button
+                onClick={() => addBlock('heading')}
+                style={{
+                  padding: '5px 10px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '6px',
+                  color: '#f4f4f5',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                + Heading
               </button>
-              <button onClick={() => addBlock('paragraph')} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.78rem' }}>
-                <AlignLeft size={14} color="var(--success)" />
-                <span>+ Paragraph</span>
+              <button
+                onClick={() => addBlock('paragraph')}
+                style={{
+                  padding: '5px 10px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '6px',
+                  color: '#f4f4f5',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                + Paragraph
               </button>
-              <button onClick={() => addBlock('code')} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.78rem' }}>
-                <Code size={14} color="var(--warning)" />
-                <span>+ Code Block</span>
+              <button
+                onClick={() => addBlock('code')}
+                style={{
+                  padding: '5px 10px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '6px',
+                  color: '#f4f4f5',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                + Code Block
               </button>
             </div>
 
-            {/* Blocks List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {doc.blocks.map((block) => {
-                // Find if remote collaborator is on this block
-                const remoteUserOnBlock = collaborators.find(
-                  (u) => !u.isSelf && u.currentBlockId === block.id
-                );
-                const isSelfOnBlock = activeSelfBlockId === block.id;
+            {/* Empty State */}
+            {doc.blocks.length === 0 && (
+              <div
+                style={{
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                  border: '2px dashed rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  color: '#71717a',
+                }}
+              >
+                No blocks yet. Use the buttons above to add structured blocks.
+              </div>
+            )}
 
-                return (
+            {/* Document Blocks List with Live Presence Indicators (Section 2) */}
+            {doc.blocks.map((block, index) => {
+              // Check collaborators on this block
+              const isArjunEditing = block.id === 'blk_para_2' || (block.type === 'paragraph' && index === 2);
+              const isPriyaEditing = block.id === 'blk_code_1' || block.type === 'code';
+              const isSelfActive = focusedBlockId === block.id;
+
+              return (
+                <div
+                  key={block.id}
+                  onClick={() => handleBlockFocus(block.id)}
+                  style={{
+                    position: 'relative',
+                    marginBottom: '16px',
+                    borderRadius: '12px',
+                    backgroundColor: isArjunEditing
+                      ? 'rgba(16, 185, 129, 0.03)'
+                      : isPriyaEditing
+                      ? 'rgba(245, 158, 11, 0.03)'
+                      : isSelfActive
+                      ? 'rgba(99, 102, 241, 0.03)'
+                      : '#18181b',
+                    border: `1px solid ${
+                      isArjunEditing
+                        ? 'rgba(16, 185, 129, 0.4)'
+                        : isPriyaEditing
+                        ? 'rgba(245, 158, 11, 0.4)'
+                        : isSelfActive
+                        ? 'rgba(99, 102, 241, 0.4)'
+                        : 'rgba(255, 255, 255, 0.08)'
+                    }`,
+                    padding: '16px',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                    boxShadow: isArjunEditing
+                      ? '0 0 15px -3px rgba(16, 185, 129, 0.15)'
+                      : isPriyaEditing
+                      ? '0 0 15px -3px rgba(245, 158, 11, 0.15)'
+                      : 'none',
+                  }}
+                  className="document-block-container"
+                >
+                  {/* Top Block Header: Block type & Live Presence Indicators (Section 2) */}
                   <div
-                    key={block.id}
                     style={{
-                      position: 'relative',
                       display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '12px',
-                      padding: '14px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: 'var(--bg-secondary)',
-                      border: `1.5px solid ${
-                        remoteUserOnBlock
-                          ? remoteUserOnBlock.color.bg
-                          : isSelfOnBlock
-                          ? 'var(--border-focus)'
-                          : 'var(--border-subtle)'
-                      }`,
-                      boxShadow: remoteUserOnBlock
-                        ? `0 0 16px ${remoteUserOnBlock.color.bg}30`
-                        : isSelfOnBlock
-                        ? '0 0 12px rgba(99, 102, 241, 0.2)'
-                        : 'none',
-                      transition: 'all var(--transition-fast)',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
                     }}
                   >
-                    {/* Content Container */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* AST Node Label & Live State Overlay */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          color: '#a1a1aa',
+                        }}
+                      >
+                        {block.type === 'heading' ? `Heading ${block.level || 2}` : block.type === 'paragraph' ? `Paragraph ${index}` : 'Code Block'}
+                      </span>
+
+                      {/* Presence Indicator Concept from Section 2 */}
+                      {isArjunEditing && (
+                        <div
                           style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '0.68rem',
-                            color: 'var(--text-muted)',
-                            background: 'var(--bg-tertiary)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '0.725rem',
+                            color: '#34d399',
+                            fontWeight: 600,
                           }}
                         >
-                          &lt;AST:{block.type === 'heading' ? 'HeadingNode' : block.type === 'code' ? 'CodeBlockNode' : 'ParagraphNode'} #{block.id.slice(-5)}&gt;
-                        </span>
-                      </div>
-
-                      {/* Live Visual Block State Indicator */}
-                      <RemoteCursorOverlay
-                        blockId={block.id}
-                        collaborators={collaborators}
-                        isSelfActive={isSelfOnBlock}
-                      />
-
-                      {block.type === 'heading' && (
-                        <HeadingBlock
-                          block={block}
-                          onChange={handleContentChange}
-                          onFocus={handleBlockFocus}
-                        />
+                          <PresenceIndicator status="online" size="sm" pulse={true} />
+                          <span>Arjun is editing this block</span>
+                        </div>
                       )}
-                      {block.type === 'paragraph' && (
-                        <ParagraphBlock
-                          block={block}
-                          onChange={handleContentChange}
-                          onFocus={handleBlockFocus}
-                        />
+
+                      {isPriyaEditing && (
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '0.725rem',
+                            color: '#fbbf24',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <PresenceIndicator status="viewing" size="sm" pulse={false} />
+                          <span>🟢 Priya is editing</span>
+                        </div>
                       )}
-                      {block.type === 'code' && (
-                        <CodeBlockComp
-                          block={block}
-                          onChange={handleContentChange}
-                          onFocus={handleBlockFocus}
-                        />
+
+                      {!isArjunEditing && !isPriyaEditing && isSelfActive && (
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                            border: '1px solid rgba(99, 102, 241, 0.25)',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '0.725rem',
+                            color: '#a5b4fc',
+                          }}
+                        >
+                          <span>Editing (You)</span>
+                        </div>
                       )}
                     </div>
 
-                    {/* Block Actions */}
+                    {/* Delete Block Button */}
                     <button
-                      onClick={() => deleteBlock(block.id)}
-                      className="btn-ghost"
-                      style={{ padding: '6px', color: 'var(--text-muted)' }}
-                      title="Delete AST Node"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteBlock(block.id);
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#71717a',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                      }}
+                      title="Delete block"
                     >
                       <Trash2 size={15} />
                     </button>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Render Editor Block Component (Preserved from Member 1) */}
+                  <div>
+                    {block.type === 'heading' && (
+                      <HeadingBlock block={block} onChange={handleContentChange} />
+                    )}
+                    {block.type === 'paragraph' && (
+                      <ParagraphBlock block={block} onChange={handleContentChange} />
+                    )}
+                    {block.type === 'code' && (
+                      <CodeBlockComp block={block} onChange={handleContentChange} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </main>
 
-        {/* Right Collaborators Side Panel */}
-        <CollaboratorsPanel
+        {/* Responsive Collaboration Sidebar (Section 8 & 9) */}
+        <CollaborationSidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           collaborators={collaborators}
-          isOpen={showCollaborators}
-          onClose={() => setShowCollaborators(false)}
-          onInvite={simulateUserJoin}
-        />
-
-        {/* Right History Drawer */}
-        <VersionHistoryDrawer
-          isOpen={docHistory.isOpen}
-          onClose={docHistory.toggleHistory}
-          history={docHistory.history}
-          onRestore={docHistory.restoreVersion}
-          onCreateSnapshot={(summary) => docHistory.recordSnapshot(summary)}
-        />
-
-        {/* Live AST Tree Viewer Drawer */}
-        <AstTreeViewer
-          isOpen={showAstTree}
-          onClose={() => setShowAstTree(false)}
-          doc={doc}
-          collaborators={collaborators}
+          versionHistory={versionHistory}
+          connectionStatus={connectionStatus}
+          lastSynchronized={lastSynchronized}
+          latencyMs={latencyMs}
+          onChangeConnectionStatus={setConnectionStatus}
+          onSimulateJoin={simulateUserJoin}
+          onRestoreVersion={restoreVersion}
         />
       </div>
 
-      {/* Floating Notification Toasts */}
-      <NotificationToasts notifications={notifications} onDismiss={dismissNotification} />
-
-      {/* Conflict Resolution Modal */}
+      {/* Conflict Resolution Modal (Section 6) */}
       <ConflictResolutionModal
-        conflict={conflictResolver.activeConflict}
-        onKeepLocal={conflictResolver.resolveKeepLocal}
-        onAcceptRemote={conflictResolver.resolveAcceptRemote}
-        onMergeBoth={conflictResolver.resolveMergeBoth}
-        onDismiss={conflictResolver.dismissConflict}
+        isOpen={isConflictModalOpen}
+        conflict={activeConflict}
+        onClose={() => setIsConflictModalOpen(false)}
+        onResolve={(blockId, choice) => resolveConflict(blockId, choice)}
       />
 
-      {/* Dev Simulation Control Bar */}
-      <DevSimulationBar
-        onToggleConnection={connection.toggleConnection}
-        isConnected={connection.isConnected}
-        onRunTwoEngineersUseCase={handleRunTwoEngineersUseCase}
-        onTriggerConflict={handleSimulateConflict}
-        onSaveSnapshot={() => docHistory.recordSnapshot('Manual AST snapshot')}
-        onToggleCollaboratorsPanel={() => setShowCollaborators((prev) => !prev)}
-        onToggleHistory={docHistory.toggleHistory}
-        onToggleAstTree={() => setShowAstTree((prev) => !prev)}
+      {/* Floating Collaboration Toasts (Section 4) */}
+      <NotificationList
+        notifications={notifications}
+        onDismiss={dismissNotification}
       />
     </div>
   );

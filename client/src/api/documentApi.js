@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 const API_BASE = 'http://localhost:5000/api/documents';
 
@@ -8,37 +8,37 @@ const api = axios.create({
   timeout: 1500,
 });
 
-const STORAGE_KEY = 'syncdoc_technical_spec_v2';
+const STORAGE_KEY = 'syncdoc_technical_spec_v3';
 
 const getDefaultDocs = () => [
   {
     _id: 'doc_tech_spec_01',
-    title: 'Technical Spec: Distributed Real-Time AST Synchronization',
+    title: 'SyncDoc Technical Specification & Architecture',
     blocks: [
       {
         id: 'blk_head_1',
         type: 'heading',
         level: 1,
-        content: 'Technical Spec: AST-Based Collaborative Document Engine',
+        content: 'SyncDoc Technical Specification & Architecture',
         astNodeType: 'HeadingNode',
       },
       {
-        id: 'blk_para_prob',
+        id: 'blk_para_1',
         type: 'paragraph',
-        content: 'Problem Statement: Multi-user text editors frequently suffer from destructive overwrites and sync conflicts. Plain text line/character merging is insufficient for complex structural documents, leading to corrupted layouts and lost work when multiple users edit simultaneously.',
+        content: 'SyncDoc is a collaborative technical document engine designed for multi-user editing with AST-based conflict resolution. Content is organized into structural blocks such as paragraphs, headings, and code blocks.',
         astNodeType: 'ParagraphNode',
       },
       {
-        id: 'blk_para_spec',
+        id: 'blk_para_2',
         type: 'paragraph',
-        content: 'Use Case in Action: Two engineers open this technical spec. As User A (You) types this new paragraph, User B concurrently adds and edits the code block lower down the page. The system AST conflict resolution ensures neither edit is lost, while live visual block state indicators prevent layout overwrites.',
+        content: 'NodeMCU communicates with the server using Wi-Fi.',
         astNodeType: 'ParagraphNode',
       },
       {
-        id: 'blk_code_spec',
+        id: 'blk_code_1',
         type: 'code',
-        language: 'typescript',
-        content: '// AST Conflict Resolution & Node State Serialization\ninterface AstBlockNode {\n  id: string;\n  astNodeType: "ParagraphNode" | "CodeBlockNode" | "HeadingNode";\n  version: number;\n  activeLockAuthor: string | null; // e.g. "User B (Engineer 2)"\n  content: string;\n}',
+        language: 'javascript',
+        content: 'const example = "SyncDoc";\nconsole.log(`Connecting to collaborative document engine: ${example}`);',
         astNodeType: 'CodeBlockNode',
       },
     ],

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import BlockEditor from './components/blocks/BlockEditor';
 
 const App = () => {
-  const [activeDocId, setActiveDocId] = useState('doc_demo_1');
+  const [activeDocId, setActiveDocId] = useState('doc_tech_spec_01');
 
   return (
     <div className="syncdoc-app">

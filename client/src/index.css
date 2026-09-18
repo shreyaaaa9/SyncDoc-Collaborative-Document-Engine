@@ -177,3 +177,54 @@ input:focus, textarea:focus, select:focus {
   font-weight: 600;
   border-radius: var(--radius-full);
 }
+
+/* ==========================================================================
+   Responsive Collaboration Sidebar & Mobile Drawer Rules
+   ========================================================================== */
+
+.sidebar-backdrop-mobile {
+  display: none !important;
+}
+
+@media (max-width: 1024px) {
+  .collaboration-sidebar {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    box-shadow: -10px 0 25px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .collaboration-sidebar.closed {
+    width: 0 !important;
+    min-width: 0 !important;
+    border-left: none !important;
+  }
+
+  .sidebar-backdrop-mobile {
+    display: block !important;
+    z-index: 9998 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar-btn-text {
+    display: none !important;
+  }
+
+  .collaboration-sidebar {
+    width: 100vw !important;
+    max-width: 320px !important;
+  }
+}
+
+.collaborator-item-row:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.version-history-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}

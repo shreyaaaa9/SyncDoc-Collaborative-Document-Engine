@@ -1,222 +1,129 @@
-import React from 'react';
-import { Users, UserPlus, Circle, Sparkles, X } from 'lucide-react';
-import { PresenceStatus } from '../../types/collaboration';
+﻿import React from 'react';
+import CollaboratorItem from './CollaboratorItem';
+import { Users, Plus, UserCheck } from 'lucide-react';
 
+/**
+ * CollaboratorsPanel
+ * Displays all collaborators currently active or registered on the document.
+ * Follows Week 1 specifications:
+ * - Kirubakar (You, Editing Paragraph 2)
+ * - Arjun (Editing, Code Block)
+ * - Priya (Viewing)
+ * - Rahul (Offline)
+ */
 const CollaboratorsPanel = ({
-  collaborators,
-  isOpen,
-  onClose,
-  onInvite,
+  collaborators = [],
+  onSimulateJoin,
+  onSimulateLeave,
 }) => {
-  if (!isOpen) return null;
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case PresenceStatus.ACTIVE:
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--success)', fontSize: '0.72rem' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
-            Active
-          </span>
-        );
-      case PresenceStatus.IDLE:
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--warning)', fontSize: '0.72rem' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} />
-            Idle
-          </span>
-        );
-      default:
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)' }} />
-            Away
-          </span>
-        );
-    }
-  };
+  const onlineCount = collaborators.filter((c) => c.status !== 'offline').length;
+  const totalCount = collaborators.length;
 
   return (
-    <aside
+    <div
       style={{
-        width: '300px',
-        backgroundColor: 'var(--bg-secondary)',
-        borderLeft: '1px solid var(--border-subtle)',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        overflowY: 'auto',
-        transition: 'width var(--transition-normal)',
+        color: '#f4f4f5',
       }}
+      className="collaborators-panel"
     >
-      {/* Panel Header */}
+      {/* Header */}
       <div
         style={{
-          padding: '16px',
-          borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          paddingBottom: '12px',
+          marginBottom: '12px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Users size={18} color="var(--primary)" />
-          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Collaborators</span>
+          <Users size={18} color="#818cf8" />
+          <h3 style={{ fontSize: '0.925rem', fontWeight: 600, margin: 0 }}>
+            Collaborators
+          </h3>
           <span
             style={{
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              fontSize: '0.72rem',
-              padding: '1px 6px',
-              borderRadius: 'var(--radius-full)',
+              fontSize: '0.725rem',
+              padding: '2px 7px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              color: '#34d399',
+              fontWeight: 600,
             }}
           >
-            {collaborators.length}
+            {onlineCount} Online
           </span>
         </div>
-        <button
-          onClick={onClose}
-          className="btn-ghost"
-          style={{ padding: '4px' }}
-          title="Close sidebar"
-        >
-          <X size={16} />
-        </button>
-      </div>
 
-      {/* Invite Button */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <button
-          onClick={onInvite}
-          className="btn-secondary"
-          style={{ width: '100%', fontSize: '0.8rem', padding: '6px 12px' }}
-        >
-          <UserPlus size={14} />
-          <span>Invite Teammate</span>
-        </button>
+        {onSimulateJoin && (
+          <button
+            onClick={onSimulateJoin}
+            style={{
+              padding: '4px 8px',
+              fontSize: '0.725rem',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              color: '#a5b4fc',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+            title="Simulate a new collaborator joining"
+          >
+            <Plus size={12} /> Add Mock
+          </button>
+        )}
       </div>
 
       {/* Collaborator List */}
-      <div style={{ flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          In This Document ({collaborators.filter((u) => u.status === PresenceStatus.ACTIVE).length} Active)
-        </div>
-
-        {collaborators.map((user) => (
-          <div
-            key={user.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 10px',
-              borderRadius: 'var(--radius-sm)',
-              background: user.isSelf ? 'var(--bg-tertiary)' : 'transparent',
-              border: `1px solid ${user.isSelf ? 'var(--border-medium)' : 'transparent'}`,
-              transition: 'background var(--transition-fast)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {/* Avatar circle with user's assigned cursor color */}
-              <div
-                style={{
-                  position: 'relative',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  backgroundColor: user.color.bg,
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                  boxShadow: `0 0 0 2px ${user.color.bg}33`,
-                }}
-              >
-                {user.name.slice(0, 2).toUpperCase()}
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: '-1px',
-                    right: '-1px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    border: '1.5px solid var(--bg-secondary)',
-                    backgroundColor:
-                      user.status === PresenceStatus.ACTIVE
-                        ? 'var(--success)'
-                        : user.status === PresenceStatus.IDLE
-                        ? 'var(--warning)'
-                        : 'var(--text-muted)',
-                  }}
-                />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '0.825rem', fontWeight: 500 }}>
-                    {user.name}
-                  </span>
-                  {user.isSelf && (
-                    <span
-                      style={{
-                        fontSize: '0.65rem',
-                        padding: '0 4px',
-                        borderRadius: '4px',
-                        background: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        fontWeight: 600,
-                      }}
-                    >
-                      YOU
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {user.currentBlockId ? (
-                    <span style={{ color: user.color.text, fontWeight: 500 }}>
-                      Editing Block
-                    </span>
-                  ) : (
-                    getStatusBadge(user.status)
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <span
-              style={{
-                fontSize: '0.68rem',
-                color: 'var(--text-muted)',
-                background: 'var(--bg-tertiary)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-              }}
-            >
-              {user.role}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer Info */}
       <div
         style={{
-          padding: '12px 16px',
-          borderTop: '1px solid var(--border-subtle)',
-          fontSize: '0.7rem',
-          color: 'var(--text-muted)',
+          overflowY: 'auto',
+          flex: 1,
+          paddingRight: '4px',
+        }}
+      >
+        {collaborators.map((collaborator) => (
+          <CollaboratorItem key={collaborator.id} collaborator={collaborator} />
+        ))}
+
+        {collaborators.length === 0 && (
+          <div
+            style={{
+              padding: '24px 16px',
+              textAlign: 'center',
+              color: '#71717a',
+              fontSize: '0.825rem',
+            }}
+          >
+            No collaborators active on this document.
+          </div>
+        )}
+      </div>
+
+      {/* Footer Info for Week 1 preparation */}
+      <div
+        style={{
+          marginTop: '12px',
+          paddingTop: '10px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          fontSize: '0.725rem',
+          color: '#71717a',
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
         }}
       >
-        <Sparkles size={13} color="var(--primary)" />
-        <span>Real-time presence synchronized</span>
+        <UserCheck size={13} color="#94a3b8" />
+        <span>Ready for WebSocket user presence broadcast</span>
       </div>
-    </aside>
+    </div>
   );
 };
 
