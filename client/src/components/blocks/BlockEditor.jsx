@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
-import { fetchDocumentById, updateDocument } from '../../api/documentApi';
+import { fetchDocumentById, updateDocument, getInitialDocument } from '../../api/documentApi';
 import HeadingBlock from './HeadingBlock';
 import ParagraphBlock from './ParagraphBlock';
 import CodeBlockComp from './CodeBlockComp';
@@ -31,7 +31,7 @@ import {
 const generateId = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const BlockEditor = ({ documentId, onBack }) => {
-  const [doc, setDoc] = useState(null);
+  const [doc, setDoc] = useState(() => getInitialDocument(documentId));
   const [saving, setSaving] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [focusedBlockId, setFocusedBlockId] = useState('blk_para_2');
@@ -73,11 +73,11 @@ const BlockEditor = ({ documentId, onBack }) => {
     setCurrentUserBlock,
   } = useCollaboration(handleDocumentUpdate);
 
-  // Load document on mount
+  // Sync document data if changed
   useEffect(() => {
     fetchDocumentById(documentId)
       .then((data) => {
-        setDoc(data);
+        if (data) setDoc(data);
       })
       .catch((err) => {
         console.error('Failed to load document', err);
