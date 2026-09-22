@@ -64,6 +64,21 @@ const documentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Yjs binary state for real-time collaboration (stored as Buffer)
+    yjsState: {
+      type: Buffer,
+      default: null,
+    },
+    // Last time a Yjs sync was saved
+    lastSyncedAt: {
+      type: Date,
+      default: null,
+    },
+    // Number of active collaborators currently editing
+    activeCollaborators: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

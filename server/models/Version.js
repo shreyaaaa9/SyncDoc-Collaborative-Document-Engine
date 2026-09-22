@@ -11,10 +11,21 @@ const versionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    // Snapshot of the document content at this version
+    // Snapshot of the document content (AST) at this version
     content: {
       type: mongoose.Schema.Types.Mixed,
       default: [],
+    },
+    // Yjs binary state snapshot at this version
+    yjsState: {
+      type: Buffer,
+      default: null,
+    },
+    // Type of save that triggered this version
+    saveType: {
+      type: String,
+      enum: ["manual", "auto", "disconnect", "conflict-resolved"],
+      default: "auto",
     },
     savedBy: {
       type: mongoose.Schema.Types.ObjectId,
