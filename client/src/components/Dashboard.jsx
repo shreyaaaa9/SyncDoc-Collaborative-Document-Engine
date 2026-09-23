@@ -46,10 +46,10 @@ const Dashboard = ({ onOpenDocument }) => {
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: 20 }}>
-      <h1>SyncDoc Dashboard</h1>
+    <div>
+      <h2>Dashboard</h2>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div className="toolbar">
         <input
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
@@ -67,17 +67,7 @@ const Dashboard = ({ onOpenDocument }) => {
       ) : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {documents.map((doc) => (
-            <li
-              key={doc._id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                border: '1px solid #ddd',
-                padding: 10,
-                marginBottom: 8,
-                borderRadius: 6,
-              }}
-            >
+            <li key={doc._id} className="doc-list-item">
               <span onClick={() => onOpenDocument(doc._id)} style={{ cursor: 'pointer' }}>
                 {doc.title}
               </span>

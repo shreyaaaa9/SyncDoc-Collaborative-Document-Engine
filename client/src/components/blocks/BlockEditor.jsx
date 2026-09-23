@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { fetchDocumentById, updateDocument } from '../api/documentApi';
-import HeadingBlock from './blocks/HeadingBlock';
-import ParagraphBlock from './blocks/ParagraphBlock';
-import CodeBlockComp from './blocks/CodeBlockComp';
+import { fetchDocumentById, updateDocument } from '../../api/documentApi';
+import HeadingBlock from './HeadingBlock';
+import ParagraphBlock from './ParagraphBlock';
+import CodeBlockComp from './CodeBlockComp';
 
 const generateId = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -54,11 +54,11 @@ const BlockEditor = ({ documentId, onBack }) => {
   if (!doc) return <p>Loading document...</p>;
 
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto', padding: 20 }}>
+    <div>
       <button onClick={onBack}>← Back to Dashboard</button>
       <h2>{doc.title}</h2>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div className="toolbar">
         <button onClick={() => addBlock('heading')}>+ Heading</button>
         <button onClick={() => addBlock('paragraph')}>+ Paragraph</button>
         <button onClick={() => addBlock('code')}>+ Code Block</button>
@@ -70,7 +70,7 @@ const BlockEditor = ({ documentId, onBack }) => {
       {doc.blocks.length === 0 && <p>No blocks yet. Add one above.</p>}
 
       {doc.blocks.map((block) => (
-        <div key={block.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+        <div key={block.id} className="block-row">
           <div style={{ flex: 1 }}>
             {block.type === 'heading' && (
               <HeadingBlock block={block} onChange={handleContentChange} />
