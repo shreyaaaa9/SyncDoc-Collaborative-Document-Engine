@@ -7,6 +7,9 @@ const {
   getDocumentById,
   updateDocument,
   deleteDocument,
+  syncDocument,
+  getDocumentVersions,
+  getDocumentVersionById,
 } = require("../controllers/documentController");
 
 // Validation rules for creating/updating a document
@@ -33,5 +36,10 @@ router.get("/:id", getDocumentById);
 router.post("/", documentValidation, validate, createDocument);
 router.put("/:id", updateDocument);
 router.delete("/:id", deleteDocument);
+
+// Collaborative sync routes
+router.post("/:id/sync", syncDocument);
+router.get("/:id/versions", getDocumentVersions);
+router.get("/:id/versions/:versionNumber", getDocumentVersionById);
 
 module.exports = router;
