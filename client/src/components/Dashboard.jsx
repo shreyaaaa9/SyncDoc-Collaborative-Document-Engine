@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { fetchDocuments, createDocument, deleteDocument } from '../api/documentApi';
+import StatusMessage from './common/StatusMessage';
 
 const Dashboard = ({ onOpenDocument }) => {
   const [documents, setDocuments] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
 
   const loadDocuments = async () => {
@@ -27,12 +29,16 @@ const Dashboard = ({ onOpenDocument }) => {
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     try {
+      setCreating(true);
+      setError(null);
       const doc = await createDocument(newTitle.trim());
       setNewTitle('');
       await loadDocuments();
       if (doc._id) onOpenDocument(doc._id);
     } catch (err) {
       setError('Failed to create document.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -55,11 +61,15 @@ const Dashboard = ({ onOpenDocument }) => {
           onChange={(e) => setNewTitle(e.target.value)}
           placeholder="New document title"
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          disabled={creating}
         />
-        <button onClick={handleCreate}>+ New Document</button>
+        <button onClick={handleCreate} disabled={creating}>
+          {creating ? 'Creating...' : '+ New Document'}
+        </button>
       </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <StatusMessage type="error" message={error} onRetry={loadDocuments} />
+
       {loading ? (
         <p>Loading...</p>
       ) : documents.length === 0 ? (
