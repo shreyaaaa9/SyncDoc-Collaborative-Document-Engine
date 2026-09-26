@@ -4,7 +4,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const connectDB = require("./config/db");
-
+const documentRoutes = require("./routes/documentRoutes");
 const app = express();
 const server = http.createServer(app);
 
@@ -14,6 +14,7 @@ const PORT = 5001;
 connectDB();
 
 app.use(express.json());
+app.use("/api/documents", documentRoutes);
 
 // Basic HTTP route
 app.get("/", (req, res) => {
