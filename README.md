@@ -62,3 +62,23 @@ This project is being developed as part of the Web Development Internship at Inf
 🚧 **Currently in Development**
 
 **Current Phase:** Week 1 — Implementation Phase 1
+
+## 🖥️ Frontend (client/)
+
+Built with React + Vite.
+
+### Setup
+```bash
+cd client
+npm install
+npm run dev
+```
+App runs at `http://localhost:5173`. Expects the backend API at `http://localhost:5000/api/documents`.
+
+### Frontend Progress (Week 1 — Member 1)
+- [x] Main layout + Dashboard page
+- [x] Create / Open document flow
+- [x] Document editor with title, toolbar, save button
+- [x] Reusable block components
+- [x] Responsive layout
+- [x] Project structure (Vite setup)
