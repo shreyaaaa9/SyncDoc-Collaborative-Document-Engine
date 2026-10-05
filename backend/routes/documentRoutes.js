@@ -1,16 +1,45 @@
 const express = require("express");
-
+const router = express.Router();
+const { body, validationResult } = require("express-validator");
 const {
   createDocument,
-  getDocument
+  getDocuments,
+  getDocumentById,
+  updateDocument,
+  deleteDocument,
+  syncDocument,
+  getDocumentVersions,
+  getDocumentVersionById,
 } = require("../controllers/documentController");
 
-const router = express.Router();
+// Validation rules for creating/updating a document
+const documentValidation = [
+  body("title")
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ max: 200 })
+    .withMessage("Title cannot exceed 200 characters"),
+];
 
-// Create a new document
-router.post("/", createDocument);
+// Middleware to check validation results
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+  next();
+};
 
-// Get a document by ID
-router.get("/:id", getDocument);
+// Routes
+router.get("/", getDocuments);
+router.get("/:id", getDocumentById);
+router.post("/", documentValidation, validate, createDocument);
+router.put("/:id", updateDocument);
+router.delete("/:id", deleteDocument);
+
+// Collaborative sync routes
+router.post("/:id/sync", syncDocument);
+router.get("/:id/versions", getDocumentVersions);
+router.get("/:id/versions/:versionNumber", getDocumentVersionById);
 
 module.exports = router;
