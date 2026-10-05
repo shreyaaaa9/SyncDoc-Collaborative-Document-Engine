@@ -9,7 +9,7 @@ const api = axios.create({
 
 export const fetchDocuments = async () => {
   const res = await api.get('/');
-  return res.data;
+  return res.data.data || res.data;
 };
 
 export const fetchDocumentById = async (id) => {
@@ -30,3 +30,10 @@ export const updateDocument = async (id, data) => {
 export const deleteDocument = async (id) => {
   await api.delete(`/${id}`);
 };
+
+// Stub for compatibility with BlockEditor — returns empty doc shell
+export const getInitialDocument = (id) => ({
+  _id: id,
+  title: 'Loading...',
+  blocks: [],
+});
