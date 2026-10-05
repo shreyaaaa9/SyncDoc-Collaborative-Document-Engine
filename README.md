@@ -1,5 +1,3 @@
-# SyncDoc-Collaborative-Document-Engine
-# SyncDoc-AST-Collaborative-Editor
 # SyncDoc: Collaborative Document Engine with AST Conflict Resolution
 
 ## 📌 Project Overview
@@ -20,9 +18,9 @@ This project is being developed as part of the Web Development Internship at Inf
 - Maintain document versions and changes.
 - Develop a responsive and maintainable web application.
 
-## 🛠️ Planned Technology Stack
+## 🛠️ Technology Stack
 
-- Frontend: React.js
+- Frontend: React.js (Vite), Axios
 - Backend: Node.js / Express.js
 - Database: PostgreSQL
 - Real-time Communication: WebSocket
@@ -30,7 +28,7 @@ This project is being developed as part of the Web Development Internship at Inf
 
 ## 👥 Team
 
-
+- Frontend Member 1: Rupam Dey (Main UI + Document Editor)
 
 ## 📅 Development Plan
 
@@ -50,6 +48,7 @@ This project is being developed as part of the Web Development Internship at Inf
 - Conflict detection
 - AST-based processing
 - Conflict resolution
+- Advanced document editor
 
 ### Week 4 — Phase 4
 - Testing and debugging
@@ -61,24 +60,94 @@ This project is being developed as part of the Web Development Internship at Inf
 
 🚧 **Currently in Development**
 
-**Current Phase:** Week 1 — Implementation Phase 1
+**Current Phase:** Week 3 — Advanced Editor + Conflict/Version UI
 
 ## 🖥️ Frontend (client/)
 
 Built with React + Vite.
 
 ### Setup
+
 ```bash
 cd client
 npm install
 npm run dev
 ```
-App runs at `http://localhost:5173`. Expects the backend API at `http://localhost:5000/api/documents`.
+
+The app runs at `http://localhost:5173`. It expects the backend API at `http://localhost:5000/api/documents`, so start the backend first.
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+### Folder Structure
+
+```
+client/src
+├── api/                 # API service functions (documentApi.js)
+├── components/
+│   ├── blocks/          # BlockEditor, BlockItem and block components
+│   ├── common/          # Loader, ErrorState (reusable states)
+│   ├── editor/          # EditorToolbar, SaveStatus, VersionBadge
+│   ├── Dashboard.jsx    # Document list, create, open, delete
+│   └── Layout.jsx       # Main app layout
+├── hooks/               # useDocumentEditor (editor state and save logic)
+├── styles/              # editor.css
+└── utils/               # generateTestBlocks (dev test content)
+```
+
+### Supported Block Types
+
+| Block | Notes |
+|---|---|
+| Heading | H1, H2, H3 |
+| Paragraph | Press Enter to add a new paragraph below |
+| List | Bulleted or numbered, one item per line |
+| Quote | Block quote |
+| Code | Language selector |
+
+### API Used by the Frontend
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/documents` | List documents for the Dashboard |
+| GET | `/api/documents/:id` | Open a document |
+| POST | `/api/documents` | Create a document |
+| PUT | `/api/documents/:id` | Save title and blocks |
+| DELETE | `/api/documents/:id` | Delete a document |
+
+For the editor to show version information, the document response should include `version` and `updatedAt`. The backend must also accept the `quote` and `list` block types (list blocks carry an `ordered` field).
 
 ### Frontend Progress (Week 1 — Member 1)
-- [x] Main layout + Dashboard page
+- [x] Project structure (Vite setup)
+- [x] Main layout and Dashboard page
 - [x] Create / Open document flow
-- [x] Document editor with title, toolbar, save button
+- [x] Document editor with title, toolbar and Save button
 - [x] Reusable block components
 - [x] Responsive layout
-- [x] Project structure (Vite setup)
+- [x] API service prepared for backend integration
+
+### Frontend Progress (Week 2 — Member 1)
+- [x] Create Document and Open Document connected to the backend API
+- [x] Dashboard fetches and displays documents from the backend
+- [x] Document Editor loads title and blocks from the backend
+- [x] Loading states for API requests
+- [x] Save / update functionality with success feedback
+- [x] API error handling and graceful document loading failure
+- [x] Reusable API service functions for document operations
+- [ ] Complete frontend-to-backend flow test (Dashboard → Open → Edit → Save)
+
+### Frontend Progress (Week 3 — Member 1)
+- [x] Improved editor layout with sticky header and toolbar
+- [x] Toolbar to add headings (H1-H3), paragraphs, lists, quotes and code blocks
+- [x] Better editing experience: move up/down, delete, Enter adds a paragraph below
+- [x] Document version badge (version and last updated) in the editor
+- [x] Save/sync status indicator (saved, unsaved, saving, error) with retry
+- [x] Unsaved-change warning when leaving the editor or closing the tab
+- [x] Reusable loading and error state components
+- [x] Editor logic moved into the `useDocumentEditor` hook
+- [x] Responsive editor layout for mobile screens
+- [x] Dev-only test content loader to check different document sizes
+- [ ] Fix frontend issues found during collaborative testing

@@ -1,23 +1,30 @@
 import React from 'react';
+import AutoTextarea from './AutoTextarea';
 
-const CodeBlockComp = ({ block, onChange }) => {
-  return (
-    <textarea
-      value={block.content}
-      onChange={(e) => onChange(block.id, e.target.value)}
+const LANGUAGES = ['javascript', 'typescript', 'python', 'java', 'html', 'css', 'json', 'bash', 'sql'];
+
+const CodeBlockComp = ({ block, onChange, autoFocus }) => (
+  <div className="block-code">
+    <select
+      className="block-code__lang"
+      value={block.language || 'javascript'}
+      onChange={(e) => onChange(block.id, { language: e.target.value })}
+      aria-label="Code language"
+    >
+      {LANGUAGES.map((l) => (
+        <option key={l} value={l}>{l}</option>
+      ))}
+    </select>
+    <AutoTextarea
+      className="block-input block-code__input"
+      value={block.content ?? ''}
+      onChange={(e) => onChange(block.id, { content: e.target.value })}
       placeholder="// code here"
-      rows={5}
-      style={{
-        width: '100%',
-        fontFamily: 'monospace',
-        background: '#1e1e1e',
-        color: '#d4d4d4',
-        padding: 10,
-        border: 'none',
-        borderRadius: 4,
-      }}
+      aria-label="Code"
+      spellCheck={false}
+      autoFocus={autoFocus}
     />
-  );
-};
+  </div>
+);
 
 export default CodeBlockComp;

@@ -1,15 +1,15 @@
 import React from 'react';
 import AutoTextarea from './AutoTextarea';
 
-const ParagraphBlock = ({ block, onChange, autoFocus }) => (
+const QuoteBlock = ({ block, onChange, autoFocus }) => (
   <AutoTextarea
-    className="block-input block-paragraph"
+    className="block-input block-quote"
     value={block.content ?? ''}
     onChange={(e) => onChange(block.id, { content: e.target.value })}
-    placeholder="Write your paragraph..."
-    aria-label="Paragraph"
+    placeholder="Quote..."
+    aria-label="Quote"
     autoFocus={autoFocus}
   />
 );
 
-export default ParagraphBlock;
+export default QuoteBlock;

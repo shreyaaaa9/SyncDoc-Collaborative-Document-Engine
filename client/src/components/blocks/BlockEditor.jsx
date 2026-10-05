@@ -1,148 +1,126 @@
-import React, { useEffect, useState } from 'react';
-import { fetchDocumentById, updateDocument } from '../../api/documentApi';
-import HeadingBlock from './HeadingBlock';
-import ParagraphBlock from './ParagraphBlock';
-import CodeBlockComp from './CodeBlockComp';
-import StatusMessage from '../common/StatusMessage';
+import React, { useDeferredValue, useMemo } from 'react';
+import useDocumentEditor from '../../hooks/useDocumentEditor';
+import EditorToolbar from '../editor/EditorToolbar';
+import SaveStatus from '../editor/SaveStatus';
+import VersionBadge from '../editor/VersionBadge';
+import BlockItem from './BlockItem';
+import Loader from '../common/Loader';
+import ErrorState from '../common/ErrorState';
+import { generateTestBlocks, TEST_SIZES } from '../../utils/generateTestBlocks';
+import '../../styles/editor.css';
 
-const generateId = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const EMPTY = [];
 
 const BlockEditor = ({ documentId, onBack }) => {
-  const [doc, setDoc] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const {
+    doc, loading, loadError, load,
+    saveStatus, saveError, lastSavedAt, meta,
+    activeBlockId, setActiveBlockId, focusBlockId,
+    save, setTitle, updateBlock, addBlock, addParagraphBelow, deleteBlock, moveBlock, replaceBlocks,
+  } = useDocumentEditor(documentId);
 
-  const loadDocument = () => {
-    setLoading(true);
-    setLoadError(null);
-    fetchDocumentById(documentId)
-      .then((data) => {
-        setDoc(data);
-        setHasUnsavedChanges(false);
-      })
-      .catch(() => setLoadError('Failed to load this document.'))
-      .finally(() => setLoading(false));
-  };
+  // Word count: typing slow na korar jonno deferred
+  const deferredBlocks = useDeferredValue(doc?.blocks ?? EMPTY);
+  const wordCount = useMemo(
+    () =>
+      deferredBlocks.reduce((sum, b) => {
+        const t = (b.content || '').trim();
+        return sum + (t ? t.split(/\s+/).length : 0);
+      }, 0),
+    [deferredBlocks]
+  );
 
-  useEffect(() => {
-    loadDocument();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId]);
+  if (loading) return <Loader text="Opening document..." />;
+  if (loadError) return <ErrorState message={loadError} onRetry={load} onBack={onBack} />;
+  if (!doc) return null;
 
-  const markChanged = () => {
-    setHasUnsavedChanges(true);
-    setSaveSuccess(false);
-  };
-
-  const handleTitleChange = (title) => {
-    if (!doc) return;
-    setDoc({ ...doc, title });
-    markChanged();
-  };
-
-  const handleContentChange = (id, content) => {
-    if (!doc) return;
-    setDoc({
-      ...doc,
-      blocks: doc.blocks.map((b) => (b.id === id ? { ...b, content } : b)),
-    });
-    markChanged();
-  };
-
-  const addBlock = (type) => {
-    if (!doc) return;
-    const newBlock = {
-      id: generateId(),
-      type,
-      content: '',
-      ...(type === 'heading' ? { level: 2 } : {}),
-      ...(type === 'code' ? { language: 'javascript' } : {}),
-    };
-    setDoc({ ...doc, blocks: [...doc.blocks, newBlock] });
-    markChanged();
-  };
-
-  const deleteBlock = (id) => {
-    if (!doc) return;
-    setDoc({ ...doc, blocks: doc.blocks.filter((b) => b.id !== id) });
-    markChanged();
-  };
-
-  const handleSave = async () => {
-    if (!doc || !doc._id) return;
-    try {
-      setSaving(true);
-      setSaveError(null);
-      await updateDocument(doc._id, { title: doc.title, blocks: doc.blocks });
-      setHasUnsavedChanges(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      setSaveError('Failed to save document.');
-    } finally {
-      setSaving(false);
+  const handleBack = async () => {
+    if (saveStatus === 'saving') return;
+    if (saveStatus === 'unsaved') {
+      const ok = await save();
+      if (!ok && !window.confirm('Your latest changes could not be saved. Leave anyway?')) return;
+    } else if (saveStatus === 'error' && !window.confirm('Your changes are not saved. Leave anyway?')) {
+      return;
     }
+    onBack();
   };
 
-  if (loading) return <p>Loading document...</p>;
-
-  if (loadError) {
-    return (
-      <div>
-        <button onClick={onBack}>← Back to Dashboard</button>
-        <StatusMessage type="error" message={loadError} onRetry={loadDocument} />
-      </div>
-    );
-  }
+  const blocks = doc.blocks;
+  const isBusy = saveStatus === 'saving';
 
   return (
-    <div>
-      <button onClick={onBack}>← Back to Dashboard</button>
-
-      <input
-        value={doc.title}
-        onChange={(e) => handleTitleChange(e.target.value)}
-        placeholder="Document title"
-        style={{ fontSize: 20, fontWeight: 'bold', width: '100%', border: 'none', outline: 'none', margin: '12px 0' }}
-      />
-
-      <div className="toolbar">
-        <button onClick={() => addBlock('heading')}>+ Heading</button>
-        <button onClick={() => addBlock('paragraph')}>+ Paragraph</button>
-        <button onClick={() => addBlock('code')}>+ Code Block</button>
-        <button onClick={handleSave} disabled={saving || !hasUnsavedChanges}>
-          {saving ? 'Saving...' : 'Save Document'}
-        </button>
-        {hasUnsavedChanges && !saving && <span style={{ color: '#b45309', fontSize: 13 }}>Unsaved changes</span>}
-        {saveSuccess && <span style={{ color: '#15803d', fontSize: 13 }}>Saved</span>}
+    <div className="editor-page">
+      <div className="editor-sticky">
+        <div className="editor-header">
+          <button type="button" onClick={handleBack} disabled={isBusy}>← Back</button>
+          <input
+            className="title-input"
+            value={doc.title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Untitled document"
+            aria-label="Document title"
+            maxLength={150}
+          />
+          <div className="editor-header__right">
+            <VersionBadge version={meta.version} updatedAt={meta.updatedAt} />
+            <SaveStatus status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />
+            <button type="button" onClick={save} disabled={isBusy || saveStatus === 'saved'}>
+              {isBusy ? 'Saving...' : 'Save Document'}
+            </button>
+          </div>
+        </div>
+        <EditorToolbar onAdd={(type, extra) => addBlock(type, extra, activeBlockId)} />
       </div>
 
-      <StatusMessage type="error" message={saveError} onRetry={handleSave} />
-
-      {doc.blocks.length === 0 && <p>No blocks yet. Add one above.</p>}
-
-      {doc.blocks.map((block) => (
-        <div key={block.id} className="block-row">
-          <div style={{ flex: 1 }}>
-            {block.type === 'heading' && (
-              <HeadingBlock block={block} onChange={handleContentChange} />
-            )}
-            {block.type === 'paragraph' && (
-              <ParagraphBlock block={block} onChange={handleContentChange} />
-            )}
-            {block.type === 'code' && (
-              <CodeBlockComp block={block} onChange={handleContentChange} />
-            )}
-          </div>
-          <button onClick={() => deleteBlock(block.id)} title="Delete block">
-            🗑
-          </button>
+      {saveStatus === 'error' && (
+        <div className="banner banner--error" role="alert">
+          <span>{saveError}</span>
+          <button type="button" onClick={save}>Retry save</button>
         </div>
-      ))}
+      )}
+
+      <div className="blocks">
+        {blocks.length === 0 && (
+          <p className="empty-note">This document is empty. Add a heading or paragraph from the toolbar above.</p>
+        )}
+        {blocks.map((block, i) => (
+          <BlockItem
+            key={block.id || i}
+            block={block}
+            isFirst={i === 0}
+            isLast={i === blocks.length - 1}
+            isActive={block.id === activeBlockId}
+            autoFocus={block.id === focusBlockId}
+            onChange={updateBlock}
+            onDelete={deleteBlock}
+            onMove={moveBlock}
+            onFocusBlock={setActiveBlockId}
+            onAddParagraphBelow={addParagraphBelow}
+          />
+        ))}
+      </div>
+
+      <div className="editor-footer">
+        <span>{blocks.length} blocks</span>
+        <span>{wordCount} words</span>
+        {import.meta.env.DEV && (
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (!e.target.value) return;
+              replaceBlocks(generateTestBlocks(Number(e.target.value)));
+              e.target.value = '';
+            }}
+            aria-label="Load test content (dev only)"
+            style={{ marginLeft: 'auto' }}
+          >
+            <option value="">Load test content (dev)</option>
+            {Object.entries(TEST_SIZES).map(([k, v]) => (
+              <option key={k} value={v}>{k} ({v} blocks)</option>
+            ))}
+          </select>
+        )}
+      </div>
     </div>
   );
 };
