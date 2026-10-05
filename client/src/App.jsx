@@ -1,21 +1,19 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
+import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import BlockEditor from './components/blocks/BlockEditor';
 
 const App = () => {
-  const [activeDocId, setActiveDocId] = useState('doc_tech_spec_01');
+  const [activeDocId, setActiveDocId] = useState(null);
 
   return (
-    <div className="syncdoc-app">
+    <Layout>
       {activeDocId ? (
-        <BlockEditor
-          documentId={activeDocId}
-          onBack={() => setActiveDocId(null)}
-        />
+        <BlockEditor documentId={activeDocId} onBack={() => setActiveDocId(null)} />
       ) : (
         <Dashboard onOpenDocument={(id) => setActiveDocId(id)} />
       )}
-    </div>
+    </Layout>
   );
 };
 
