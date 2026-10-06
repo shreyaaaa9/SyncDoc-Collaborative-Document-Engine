@@ -1,22 +1,42 @@
 import React from 'react';
 
-const HeadingBlock = ({ block, onChange, onEnter, autoFocus }) => {
-  const level = [1, 2, 3].includes(block.level) ? block.level : 2;
+const HeadingBlock = ({ block, onChange, onFocus }) => {
+  const level = block.level || 2;
+
+  const fontSizes = {
+    1: '1.75rem',
+    2: '1.4rem',
+    3: '1.15rem',
+  };
+
   return (
-    <input
-      className={`block-input block-heading block-heading--h${level}`}
-      value={block.content ?? ''}
-      onChange={(e) => onChange(block.id, { content: e.target.value })}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          onEnter(block.id); // heading er por paragraph
-        }
-      }}
-      placeholder={`Heading ${level}`}
-      aria-label={`Heading level ${level}`}
-      autoFocus={autoFocus}
-    />
+    <div style={{ width: '100%' }}>
+      <input
+        value={block.content || ''}
+        onChange={(e) => onChange(block.id, e.target.value)}
+        onFocus={() => onFocus && onFocus(block.id)}
+        placeholder="Heading text..."
+        style={{
+          width: '100%',
+          fontSize: fontSizes[level] || '1.4rem',
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          backgroundColor: 'transparent',
+          border: 'none',
+          borderBottom: '1px dashed transparent',
+          borderRadius: 0,
+          padding: '4px 0',
+          outline: 'none',
+          transition: 'border-color var(--transition-fast)',
+        }}
+        onMouseEnter={(e) => (e.target.style.borderBottomColor = 'var(--border-medium)')}
+        onMouseLeave={(e) => {
+          if (document.activeElement !== e.target) {
+            e.target.style.borderBottomColor = 'transparent';
+          }
+        }}
+      />
+    </div>
   );
 };
 
