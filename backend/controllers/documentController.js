@@ -1,5 +1,7 @@
 const Document = require("../models/Document");
 const Version = require("../models/Version");
+const { astToHtml } = require("../transformation/astToHtml");
+const { astToPdf } = require("../transformation/astToPdf");
 
 // @desc    Create a new document
 // @route   POST /api/documents
@@ -256,6 +258,73 @@ const getDocumentVersionById = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// @desc    Transform a stored document version AST to HTML
+// @route   GET /api/documents/:id/versions/:versionNumber/html
+const getDocumentVersionHtml = async (req, res) => {
+  try {
+    const version = await Version.findOne({
+      document: req.params.id,
+      versionNumber: req.params.versionNumber,
+    });
+
+    if (!version) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Version not found" });
+    }
+
+    const html = astToHtml(version.content);
+
+    res.status(200).json({
+      success: true,
+      documentId: version.document,
+      versionNumber: version.versionNumber,
+      html,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Transform a stored document version AST to PDF
+// @route   GET /api/documents/:id/versions/:versionNumber/pdf
+const getDocumentVersionPdf = async (req, res) => {
+  try {
+    const version = await Version.findOne({
+      document: req.params.id,
+      versionNumber: req.params.versionNumber,
+    });
+
+    if (!version) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Version not found" });
+    }
+
+    const fileName = `document-${req.params.id}-version-${req.params.versionNumber}.pdf`;
+
+    const os = require("os");
+    const path = require("path");
+
+    const outputPath = path.join(os.tmpdir(), fileName);
+
+    await astToPdf(version.content, outputPath);
+
+    res.download(outputPath, fileName, (error) => {
+      if (error) {
+        console.error("PDF download error:", error);
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
   createDocument,
@@ -266,4 +335,6 @@ module.exports = {
   syncDocument,
   getDocumentVersions,
   getDocumentVersionById,
+  getDocumentVersionHtml,
+  getDocumentVersionPdf,
 };

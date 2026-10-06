@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
+
 const {
   createDocument,
   getDocuments,
@@ -10,6 +11,8 @@ const {
   syncDocument,
   getDocumentVersions,
   getDocumentVersionById,
+  getDocumentVersionHtml,
+  getDocumentVersionPdf,
 } = require("../controllers/documentController");
 
 // Validation rules for creating/updating a document
@@ -24,9 +27,14 @@ const documentValidation = [
 // Middleware to check validation results
 const validate = (req, res, next) => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
+    return res.status(400).json({
+      success: false,
+      errors: errors.array(),
+    });
   }
+
   next();
 };
 
@@ -39,7 +47,20 @@ router.delete("/:id", deleteDocument);
 
 // Collaborative sync routes
 router.post("/:id/sync", syncDocument);
+
+// Version routes
 router.get("/:id/versions", getDocumentVersions);
 router.get("/:id/versions/:versionNumber", getDocumentVersionById);
+
+// Transformation routes
+router.get(
+  "/:id/versions/:versionNumber/html",
+  getDocumentVersionHtml
+);
+
+router.get(
+  "/:id/versions/:versionNumber/pdf",
+  getDocumentVersionPdf
+);
 
 module.exports = router;
