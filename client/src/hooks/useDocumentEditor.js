@@ -1,17 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchDocumentById, updateDocument } from '../api/documentApi';
-
-const generateId = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-const makeBlock = (type, extra = {}) => ({
-  id: generateId(),
-  type,
-  content: '',
-  ...(type === 'heading' ? { level: 2 } : {}),
-  ...(type === 'code' ? { language: 'javascript' } : {}),
-  ...(type === 'list' ? { ordered: false } : {}),
-  ...extra,
-});
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchDocumentById, updateDocument, getErrorMessage } from '../api/documentApi';
+import { generateId, createBlock } from '../utils/blockUtils';
 
 const useDocumentEditor = (documentId) => {
   const [doc, setDoc] = useState(null);
@@ -51,7 +40,7 @@ const useDocumentEditor = (documentId) => {
       setActiveBlockId(null);
       setFocusBlockId(null);
     } catch (err) {
-      setLoadError('Could not load this document. Check that the server is running and try again.');
+      setLoadError(getErrorMessage(err, 'Could not load this document.'));
     } finally {
       setLoading(false);
     }
@@ -90,7 +79,7 @@ const useDocumentEditor = (documentId) => {
       return true;
     } catch (err) {
       setSaveStatus('error');
-      setSaveError('Save failed. Check your connection and try again.');
+      setSaveError(getErrorMessage(err, 'Save failed. Check your connection and try again.'));
       return false;
     }
   }, [documentId]);
@@ -108,7 +97,7 @@ const useDocumentEditor = (documentId) => {
   }, [markUnsaved]);
 
   const addBlock = useCallback((type, extra, afterId) => {
-    const block = makeBlock(type, extra);
+    const block = createBlock(type, extra);
     setDoc((prev) => {
       if (!prev) return prev;
       const idx = afterId ? prev.blocks.findIndex((b) => b.id === afterId) : -1;

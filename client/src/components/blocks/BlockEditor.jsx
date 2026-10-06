@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useMemo } from 'react';
+import React, { useDeferredValue, useEffect, useMemo } from 'react';
 import useDocumentEditor from '../../hooks/useDocumentEditor';
 import EditorToolbar from '../editor/EditorToolbar';
 import SaveStatus from '../editor/SaveStatus';
@@ -29,6 +29,17 @@ const BlockEditor = ({ documentId, onBack }) => {
       }, 0),
     [deferredBlocks]
   );
+    // Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (saveStatus === 'unsaved' || saveStatus === 'error') save();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [save, saveStatus]);
 
   if (loading) return <Loader text="Opening document..." />;
   if (loadError) return <ErrorState message={loadError} onRetry={load} onBack={onBack} />;
