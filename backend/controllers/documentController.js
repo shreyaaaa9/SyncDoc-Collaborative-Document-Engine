@@ -116,6 +116,11 @@ const getDocuments = async (req, res) => {
 // @route   GET /api/documents/:id
 const getDocumentById = async (req, res) => {
   try {
+    // Validate ObjectId format before querying
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: "Invalid ID format" });
+    }
+
     const document = await Document.findById(req.params.id).select("-yjsState");
 
     if (!document) {
@@ -134,6 +139,9 @@ const getDocumentById = async (req, res) => {
 // @route   PUT /api/documents/:id
 const updateDocument = async (req, res) => {
   try {
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: "Invalid ID format" });
+    }
     const { title, content, isPublic } = req.body;
 
     // Validate AST nodes if content is being updated
@@ -190,6 +198,9 @@ const updateDocument = async (req, res) => {
 // @route   DELETE /api/documents/:id
 const deleteDocument = async (req, res) => {
   try {
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: "Invalid ID format" });
+    }
     const document = await Document.findById(req.params.id);
 
     if (!document) {
