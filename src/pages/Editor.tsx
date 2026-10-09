@@ -6,6 +6,8 @@ import {
   PanelLeft,
   Download,
   Check,
+  ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 
 import { useDocuments } from '../context/DocumentContext';
@@ -21,19 +23,47 @@ import { Collaborators } from '../components/Collaborators';
 import { CollaborationNotification } from '../components/CollaborationNotification';
 import { PresenceIndicator } from '../components/PresenceIndicator';
 
+import { COLLABORATION_PERSONAS, type CollaboratorPersona } from '../data/personas';
+
 export const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { documents, getDocument, saveDocument, user } = useDocuments();
+  const { documents, getDocument, saveDocument, user, setUser } = useDocuments();
 
   // Find document or fallback to first available
   const activeDocument = id ? getDocument(id) : documents[0];
 
-  // Resolve user identity (supports ?user=Name for instant multi-window testing)
+  // Resolve user identity (supports ?id=user_2 or ?user=Sarah for instant multi-window testing)
   const queryUser = searchParams.get('user') || searchParams.get('name');
+  const queryId = searchParams.get('id') || searchParams.get('userId');
+
   const effectiveUser = useMemo(() => {
+    if (queryId) {
+      const match = COLLABORATION_PERSONAS.find((p) => p.id === queryId);
+      if (match) {
+        return {
+          id: match.id,
+          name: match.name,
+          email: match.email,
+          role: match.role,
+        };
+      }
+    }
     if (queryUser) {
+      const match = COLLABORATION_PERSONAS.find(
+        (p) =>
+          p.name.toLowerCase().includes(queryUser.toLowerCase()) ||
+          queryUser.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
+      );
+      if (match) {
+        return {
+          id: match.id,
+          name: match.name,
+          email: match.email,
+          role: match.role,
+        };
+      }
       return {
         ...user,
         id: `user_${queryUser.toLowerCase().replace(/\s+/g, '_')}`,
@@ -42,7 +72,7 @@ export const Editor: React.FC = () => {
       };
     }
     return user;
-  }, [queryUser, user]);
+  }, [queryUser, queryId, user]);
 
   const [title, setTitle] = useState(activeDocument?.title || 'Untitled Specification');
   const [content, setContent] = useState(activeDocument?.content || '');
@@ -50,8 +80,25 @@ export const Editor: React.FC = () => {
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState('system-overview');
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
+  const personaMenuRef = useRef<HTMLDivElement | null>(null);
 
   const editorRef = useRef<HTMLDivElement | null>(null);
+
+  // Close persona dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (personaMenuRef.current && !personaMenuRef.current.contains(e.target as Node)) {
+        setIsPersonaMenuOpen(false);
+      }
+    };
+    if (isPersonaMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isPersonaMenuOpen]);
 
   // Real-Time Collaboration Hook
   const {
@@ -67,6 +114,55 @@ export const Editor: React.FC = () => {
     initialContent: activeDocument?.content,
     user: effectiveUser,
   });
+
+  // Keep local state in sync when remote real-time edits arrive
+  useEffect(() => {
+    if (documentContent) {
+      setContent(documentContent);
+    }
+  }, [documentContent]);
+
+  const handleSwitchTabPersona = (p: CollaboratorPersona) => {
+    setUser({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      role: p.role,
+    });
+    const params = new URLSearchParams(searchParams);
+    params.set('id', p.id);
+    params.set('user', p.name);
+    setSearchParams(params, { replace: true });
+    setIsPersonaMenuOpen(false);
+  };
+
+  const handleLaunchWindow = (p: CollaboratorPersona) => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    if (activeDocument?.id) {
+      url.pathname = `/editor/${activeDocument.id}`;
+    }
+    url.searchParams.set('id', p.id);
+    url.searchParams.set('user', p.name);
+    window.open(url.toString(), '_blank', 'width=1000,height=800');
+    setIsPersonaMenuOpen(false);
+  };
+
+  const handleLaunchAllFour = () => {
+    COLLABORATION_PERSONAS.forEach((p, idx) => {
+      if (p.id !== effectiveUser.id) {
+        setTimeout(() => {
+          const url = new URL(window.location.origin + window.location.pathname);
+          if (activeDocument?.id) {
+            url.pathname = `/editor/${activeDocument.id}`;
+          }
+          url.searchParams.set('id', p.id);
+          url.searchParams.set('user', p.name);
+          window.open(url.toString(), '_blank', 'width=950,height=750');
+        }, idx * 250);
+      }
+    });
+    setIsPersonaMenuOpen(false);
+  };
 
   // Sync state if active document changes
   useEffect(() => {
@@ -264,12 +360,120 @@ export const Editor: React.FC = () => {
           {/* Save Button */}
           <SaveButton onSave={handleSave} />
 
-          {/* User Avatar with Profile badge */}
-          <div
-            className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold ring-2 ring-slate-200 cursor-pointer"
-            title={`Logged in as ${effectiveUser.name}`}
-          >
-            {effectiveUser.name.charAt(0)}
+          {/* User Persona & Multi-Window Switcher */}
+          <div className="relative" ref={personaMenuRef}>
+            <button
+              onClick={() => setIsPersonaMenuOpen(!isPersonaMenuOpen)}
+              className="flex items-center gap-1.5 p-1 pl-1.5 pr-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-all text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              title="Change active persona or launch multiple windows"
+            >
+              <div
+                className="w-6 h-6 rounded-full text-white flex items-center justify-center text-xs font-bold shadow-xs"
+                style={{
+                  backgroundColor:
+                    COLLABORATION_PERSONAS.find((p) => p.id === effectiveUser.id)?.color || '#4f46e5',
+                }}
+              >
+                {effectiveUser.name.charAt(0)}
+              </div>
+              <span className="hidden sm:inline font-semibold text-slate-800 text-[11px] max-w-[90px] truncate">
+                {effectiveUser.name.split(' ')[0]}
+              </span>
+              <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded font-mono hidden md:inline">
+                {effectiveUser.id}
+              </span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isPersonaMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in slide-in-from-top-1 text-left">
+                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">
+                      Identity & Multi-User Testing
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Switch ID in this tab or launch parallel windows
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLaunchAllFour}
+                    className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition-colors"
+                    title="Launch all 4 users in separate windows"
+                  >
+                    ⚡ Open All 4
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {COLLABORATION_PERSONAS.map((persona) => {
+                    const isCurrent = persona.id === effectiveUser.id;
+                    return (
+                      <div
+                        key={persona.id}
+                        className={`p-2 rounded-xl border transition-all ${
+                          isCurrent
+                            ? 'bg-indigo-50/60 border-indigo-200 shadow-2xs'
+                            : 'bg-white border-slate-100 hover:border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-bold shadow-xs flex-shrink-0"
+                              style={{ backgroundColor: persona.color }}
+                            >
+                              {persona.initials}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-slate-900 truncate flex items-center gap-1.5">
+                                {persona.name}
+                                {isCurrent && (
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-600 text-white font-mono">
+                                    Active
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[10px] text-slate-500 truncate">
+                                {persona.role} • <span className="font-mono">{persona.id}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {!isCurrent ? (
+                              <>
+                                <button
+                                  onClick={() => handleSwitchTabPersona(persona)}
+                                  className="px-2 py-1 text-[11px] font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
+                                  title="Switch to this persona in current tab"
+                                >
+                                  Switch
+                                </button>
+                                <button
+                                  onClick={() => handleLaunchWindow(persona)}
+                                  className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-medium flex items-center gap-1 transition-colors shadow-2xs"
+                                  title="Open in new browser window"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Launch
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-emerald-600 text-xs font-medium flex items-center gap-1 pr-1">
+                                <Check className="w-3.5 h-3.5" />
+                                Current
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>

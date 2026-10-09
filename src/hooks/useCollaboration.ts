@@ -27,15 +27,16 @@ export const useCollaboration = ({
   const [documentContent, setDocumentContent] = useState<string>(initialContent || '');
   const [notifications, setNotifications] = useState<CollaborationNotification[]>([]);
 
-  // Ref to track if current content update is from remote
-  const isRemoteUpdateRef = useRef(false);
+  const initialContentRef = useRef(initialContent);
+  const userRef = useRef(user);
+  userRef.current = user;
 
-  // 5 & 18: Join document room and clean up on unmount or id change
+  // Join document room and clean up on unmount or id change
   useEffect(() => {
     if (!documentId) return;
 
     // Join room with current user and content
-    collaborationService.joinDocument(documentId, user, initialContent);
+    collaborationService.joinDocument(documentId, userRef.current, initialContentRef.current);
 
     // Subscribe to status changes
     const unsubStatus = collaborationService.onStatusChange((newStatus) => {
@@ -48,8 +49,7 @@ export const useCollaboration = ({
     });
 
     // Subscribe to remote content synchronization
-    const unsubContent = collaborationService.onContentChange((newHtml, isRemote) => {
-      isRemoteUpdateRef.current = isRemote;
+    const unsubContent = collaborationService.onContentChange((newHtml) => {
       setDocumentContent(newHtml);
     });
 
@@ -69,15 +69,10 @@ export const useCollaboration = ({
       unsubNotif();
       collaborationService.leaveDocument();
     };
-  }, [documentId, user, initialContent]);
+  }, [documentId, user.id]);
 
   // Send local user edit to collaboration service
   const sendUpdate = useCallback((newHtml: string) => {
-    // 14. If currently processing a remote update, do not send back
-    if (isRemoteUpdateRef.current) {
-      isRemoteUpdateRef.current = false;
-      return;
-    }
     collaborationService.updateContent(newHtml);
   }, []);
 

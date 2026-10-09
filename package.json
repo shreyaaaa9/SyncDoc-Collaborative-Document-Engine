@@ -9,7 +9,9 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "npx tsx scripts/test-collaboration.ts",
-    "test:collab": "npx tsx scripts/test-collaboration.ts"
+    "test:collab": "npx tsx scripts/test-collaboration.ts",
+    "test:4way": "npx tsx scripts/test-4way-collaboration.ts",
+    "server:collab": "node scripts/collaboration-server.cjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -18,6 +20,7 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
     "tailwind-merge": "^3.7.0",
+    "ws": "^8.22.0",
     "yjs": "^13.6.33"
   },
   "devDependencies": {

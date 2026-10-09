@@ -79,7 +79,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
     const currentHtml = editorRef.current.innerHTML;
 
     // Only update DOM if the remote content actually differs from current HTML
-    if (remoteContent !== currentHtml && remoteContent !== lastEmittedHtml.current) {
+    if (remoteContent !== currentHtml) {
       const isFocused = document.activeElement === editorRef.current;
       const caretOffset = isFocused ? getCaretCharacterOffsetWithin(editorRef.current) : null;
 

@@ -1,4 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+<<<<<<< HEAD
+import React, { useDeferredValue, useEffect, useMemo } from 'react';
+import useDocumentEditor from '../../hooks/useDocumentEditor';
+import EditorToolbar from '../editor/EditorToolbar';
+import SaveStatus from '../editor/SaveStatus';
+import VersionBadge from '../editor/VersionBadge';
+import BlockItem from './BlockItem';
+import Loader from '../common/Loader';
+import ErrorState from '../common/ErrorState';
+import { generateTestBlocks, TEST_SIZES } from '../../utils/generateTestBlocks';
+import '../../styles/editor.css';
+=======
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import { fetchDocumentById, updateDocument, getInitialDocument } from '../../api/documentApi';
 import HeadingBlock from './HeadingBlock';
 import ParagraphBlock from './ParagraphBlock';
@@ -27,10 +39,53 @@ import {
   HelpCircle,
   Menu,
 } from 'lucide-react';
+>>>>>>> origin/main
 
-const generateId = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const EMPTY = [];
 
 const BlockEditor = ({ documentId, onBack }) => {
+<<<<<<< HEAD
+  const {
+    doc, loading, loadError, load,
+    saveStatus, saveError, lastSavedAt, meta,
+    activeBlockId, setActiveBlockId, focusBlockId,
+    save, setTitle, updateBlock, addBlock, addParagraphBelow, deleteBlock, moveBlock, replaceBlocks,
+  } = useDocumentEditor(documentId);
+
+  // Word count: typing slow na korar jonno deferred
+  const deferredBlocks = useDeferredValue(doc?.blocks ?? EMPTY);
+  const wordCount = useMemo(
+    () =>
+      deferredBlocks.reduce((sum, b) => {
+        const t = (b.content || '').trim();
+        return sum + (t ? t.split(/\s+/).length : 0);
+      }, 0),
+    [deferredBlocks]
+  );
+    // Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (saveStatus === 'unsaved' || saveStatus === 'error') save();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [save, saveStatus]);
+
+  if (loading) return <Loader text="Opening document..." />;
+  if (loadError) return <ErrorState message={loadError} onRetry={load} onBack={onBack} />;
+  if (!doc) return null;
+
+  const handleBack = async () => {
+    if (saveStatus === 'saving') return;
+    if (saveStatus === 'unsaved') {
+      const ok = await save();
+      if (!ok && !window.confirm('Your latest changes could not be saved. Leave anyway?')) return;
+    } else if (saveStatus === 'error' && !window.confirm('Your changes are not saved. Leave anyway?')) {
+      return;
+=======
   const [doc, setDoc] = useState(() => getInitialDocument(documentId));
   const [saving, setSaving] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -40,16 +95,12 @@ const BlockEditor = ({ documentId, onBack }) => {
   const handleDocumentUpdate = useCallback((target, newContent) => {
     setDoc((prev) => {
       if (!prev) return prev;
-      const currentBlocks = prev.content || prev.blocks || [];
       if (target === '__FULL_RESTORE__') {
-        const restored = Array.isArray(newContent) ? newContent : [];
-        return { ...prev, content: restored, blocks: restored };
+        return { ...prev, blocks: newContent };
       }
-      const updated = currentBlocks.map((b) => (b.id === target ? { ...b, content: newContent } : b));
       return {
         ...prev,
-        content: updated,
-        blocks: updated,
+        blocks: prev.blocks.map((b) => (b.id === target ? { ...b, content: newContent } : b)),
       };
     });
   }, []);
@@ -77,19 +128,11 @@ const BlockEditor = ({ documentId, onBack }) => {
     setCurrentUserBlock,
   } = useCollaboration(handleDocumentUpdate);
 
-  // Sync document data if changed - backend returns doc.content (AST nodes array)
+  // Sync document data if changed
   useEffect(() => {
     fetchDocumentById(documentId)
       .then((data) => {
-        if (data) {
-          const docData = data.data || data;
-          const blocks = docData.content || docData.blocks || [];
-          setDoc({
-            ...docData,
-            content: blocks,
-            blocks,
-          });
-        }
+        if (data) setDoc(data);
       })
       .catch((err) => {
         console.error('Failed to load document', err);
@@ -99,18 +142,14 @@ const BlockEditor = ({ documentId, onBack }) => {
   // Block handlers from Member 1
   const handleContentChange = (id, content) => {
     if (!doc) return;
-    const currentBlocks = doc.content || doc.blocks || [];
-    const updated = currentBlocks.map((b) => (b.id === id ? { ...b, content } : b));
     setDoc({
       ...doc,
-      content: updated,
-      blocks: updated,
+      blocks: doc.blocks.map((b) => (b.id === id ? { ...b, content } : b)),
     });
   };
 
   const addBlock = (type) => {
     if (!doc) return;
-    const currentBlocks = doc.content || doc.blocks || [];
     const newBlock = {
       id: generateId(),
       type,
@@ -118,8 +157,7 @@ const BlockEditor = ({ documentId, onBack }) => {
       ...(type === 'heading' ? { level: 2 } : {}),
       ...(type === 'code' ? { language: 'javascript' } : {}),
     };
-    const updated = [...currentBlocks, newBlock];
-    setDoc({ ...doc, content: updated, blocks: updated });
+    setDoc({ ...doc, blocks: [...doc.blocks, newBlock] });
     addNotification({
       type: 'info',
       title: 'Block Added',
@@ -129,9 +167,7 @@ const BlockEditor = ({ documentId, onBack }) => {
 
   const deleteBlock = (id) => {
     if (!doc) return;
-    const currentBlocks = doc.content || doc.blocks || [];
-    const updated = currentBlocks.filter((b) => b.id !== id);
-    setDoc({ ...doc, content: updated, blocks: updated });
+    setDoc({ ...doc, blocks: doc.blocks.filter((b) => b.id !== id) });
     addNotification({
       type: 'info',
       title: 'Block Removed',
@@ -141,14 +177,9 @@ const BlockEditor = ({ documentId, onBack }) => {
 
   const handleSave = async () => {
     if (!doc) return;
-    const currentBlocks = doc.content || doc.blocks || [];
     try {
       setSaving(true);
-      await updateDocument(doc._id, {
-        title: doc.title,
-        content: currentBlocks,
-        blocks: currentBlocks,
-      });
+      await updateDocument(doc._id, { title: doc.title, blocks: doc.blocks });
       addNotification({
         type: 'success',
         title: 'Saved',
@@ -158,9 +189,15 @@ const BlockEditor = ({ documentId, onBack }) => {
       console.error('Save failed', err);
     } finally {
       setSaving(false);
+>>>>>>> origin/main
     }
+    onBack();
   };
 
+<<<<<<< HEAD
+  const blocks = doc.blocks;
+  const isBusy = saveStatus === 'saving';
+=======
   const handleBlockFocus = (id) => {
     setFocusedBlockId(id);
     setCurrentUserBlock(id);
@@ -173,13 +210,86 @@ const BlockEditor = ({ documentId, onBack }) => {
       </div>
     );
   }
+>>>>>>> origin/main
 
   // Active online collaborator count
   const onlineCollaboratorsCount = collaborators.filter((c) => c.status !== 'offline').length;
-  // Safely extract blocks whether returned as doc.content (from backend AST) or doc.blocks
-  const blocks = doc.content || doc.blocks || [];
 
   return (
+<<<<<<< HEAD
+    <div className="editor-page">
+      <div className="editor-sticky">
+        <div className="editor-header">
+          <button type="button" onClick={handleBack} disabled={isBusy}>← Back</button>
+          <input
+            className="title-input"
+            value={doc.title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Untitled document"
+            aria-label="Document title"
+            maxLength={150}
+          />
+          <div className="editor-header__right">
+            <VersionBadge version={meta.version} updatedAt={meta.updatedAt} />
+            <SaveStatus status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />
+            <button type="button" onClick={save} disabled={isBusy || saveStatus === 'saved'}>
+              {isBusy ? 'Saving...' : 'Save Document'}
+            </button>
+          </div>
+        </div>
+        <EditorToolbar onAdd={(type, extra) => addBlock(type, extra, activeBlockId)} />
+      </div>
+
+      {saveStatus === 'error' && (
+        <div className="banner banner--error" role="alert">
+          <span>{saveError}</span>
+          <button type="button" onClick={save}>Retry save</button>
+        </div>
+      )}
+
+      <div className="blocks">
+        {blocks.length === 0 && (
+          <p className="empty-note">This document is empty. Add a heading or paragraph from the toolbar above.</p>
+        )}
+        {blocks.map((block, i) => (
+          <BlockItem
+            key={block.id || i}
+            block={block}
+            isFirst={i === 0}
+            isLast={i === blocks.length - 1}
+            isActive={block.id === activeBlockId}
+            autoFocus={block.id === focusBlockId}
+            onChange={updateBlock}
+            onDelete={deleteBlock}
+            onMove={moveBlock}
+            onFocusBlock={setActiveBlockId}
+            onAddParagraphBelow={addParagraphBelow}
+          />
+        ))}
+      </div>
+
+      <div className="editor-footer">
+        <span>{blocks.length} blocks</span>
+        <span>{wordCount} words</span>
+        {import.meta.env.DEV && (
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (!e.target.value) return;
+              replaceBlocks(generateTestBlocks(Number(e.target.value)));
+              e.target.value = '';
+            }}
+            aria-label="Load test content (dev only)"
+            style={{ marginLeft: 'auto' }}
+          >
+            <option value="">Load test content (dev)</option>
+            {Object.entries(TEST_SIZES).map(([k, v]) => (
+              <option key={k} value={v}>{k} ({v} blocks)</option>
+            ))}
+          </select>
+        )}
+      </div>
+=======
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#09090b', color: '#f4f4f5', overflow: 'hidden' }}>
       {/* Top Navigation / Collaboration Toolbar */}
       <header
@@ -438,7 +548,7 @@ const BlockEditor = ({ documentId, onBack }) => {
             </div>
 
             {/* Empty State */}
-            {blocks.length === 0 && (
+            {doc.blocks.length === 0 && (
               <div
                 style={{
                   padding: '40px 20px',
@@ -453,7 +563,7 @@ const BlockEditor = ({ documentId, onBack }) => {
             )}
 
             {/* Document Blocks List with Live Presence Indicators (Section 2) */}
-            {blocks.map((block, index) => {
+            {doc.blocks.map((block, index) => {
               // Check collaborators on this block
               const isArjunEditing = block.id === 'blk_para_2' || (block.type === 'paragraph' && index === 2);
               const isPriyaEditing = block.id === 'blk_code_1' || block.type === 'code';
@@ -641,6 +751,7 @@ const BlockEditor = ({ documentId, onBack }) => {
         notifications={notifications}
         onDismiss={dismissNotification}
       />
+>>>>>>> origin/main
     </div>
   );
 };

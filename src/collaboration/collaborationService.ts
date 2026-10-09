@@ -184,8 +184,13 @@ export class CollaborationService {
       return;
     }
 
-    // Ignore messages sent by ourselves
-    if (message.senderId === this.currentUser?.id) {
+    // Ignore messages originating from our exact same browser tab session
+    if (message.sessionId && message.sessionId === this.ws.sessionId) {
+      return;
+    }
+
+    // Fallback: If no sessionId exists on message, filter by user ID
+    if (!message.sessionId && message.senderId === this.currentUser?.id) {
       return;
     }
 

@@ -18,6 +18,7 @@ interface DocumentContextType {
 }
 
 const STORAGE_KEY = 'syncdoc_documents_v1';
+const USER_SESSION_KEY = 'syncdoc_session_user_v1';
 const USER_STORAGE_KEY = 'syncdoc_user_v1';
 
 const DEFAULT_USER: User = {
@@ -48,6 +49,12 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [user, setUserState] = useState<User>(() => {
     try {
+      // 1. Check tab-isolated session storage first
+      const sessionSaved = sessionStorage.getItem(USER_SESSION_KEY);
+      if (sessionSaved) {
+        return JSON.parse(sessionSaved);
+      }
+      // 2. Check localStorage fallback
       const saved = localStorage.getItem(USER_STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
@@ -61,6 +68,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setUser = (newUser: User) => {
     setUserState(newUser);
     try {
+      sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(newUser));
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
     } catch {
       // ignore

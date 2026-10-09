@@ -39,6 +39,7 @@ export interface BaseCollaborationMessage {
   type: CollaborationMessageType;
   documentId: string;
   senderId: string;
+  sessionId?: string;
   timestamp: number;
 }
 

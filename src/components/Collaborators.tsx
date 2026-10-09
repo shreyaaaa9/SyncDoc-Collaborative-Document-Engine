@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Users, ExternalLink, Check, Copy } from 'lucide-react';
 import type { Collaborator } from '../collaboration/types';
 
+import { COLLABORATION_PERSONAS } from '../data/personas';
+
 interface CollaboratorsProps {
   collaborators: Collaborator[];
   currentUserId?: string;
@@ -14,7 +16,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
   documentId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   // Close panel on click outside
@@ -32,28 +34,28 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
     };
   }, [isOpen]);
 
-  const maxVisible = 3;
+  const maxVisible = 4;
   const visibleUsers = collaborators.slice(0, maxVisible);
   const overflowCount = Math.max(0, collaborators.length - maxVisible);
 
-  const getPartnerUrl = () => {
-    const partnerName = collaborators.length === 1 ? 'Alex Chen' : `Collaborator ${collaborators.length + 1}`;
-    const url = new URL(window.location.href);
+  const getPersonaUrl = (personaId: string, name: string) => {
+    const url = new URL(window.location.origin + window.location.pathname);
     if (documentId) {
       url.pathname = `/editor/${documentId}`;
     }
-    url.searchParams.set('user', partnerName);
+    url.searchParams.set('id', personaId);
+    url.searchParams.set('user', name);
     return url.toString();
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(getPartnerUrl());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyLink = (personaId: string, name: string) => {
+    navigator.clipboard.writeText(getPersonaUrl(personaId, name));
+    setCopiedId(personaId);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleOpenPartnerWindow = () => {
-    window.open(getPartnerUrl(), '_blank', 'width=1000,height=800');
+  const handleOpenWindow = (personaId: string, name: string) => {
+    window.open(getPersonaUrl(personaId, name), '_blank', 'width=1000,height=800');
   };
 
   return (
@@ -156,27 +158,80 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
             })}
           </div>
 
-          {/* Quick Actions for Testing Two Browser Windows */}
-          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-            <p className="text-[11px] text-slate-500">
-              Test real-time collaboration with another browser window:
-            </p>
-            <div className="flex items-center gap-2">
+          {/* Quick Actions for Testing 2, 3, or 4 Browser Windows */}
+          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-slate-700">
+                Test with 2 to 4 Collaborator IDs:
+              </p>
               <button
-                onClick={handleOpenPartnerWindow}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors shadow-xs"
+                onClick={() => {
+                  COLLABORATION_PERSONAS.filter((p) => p.id !== currentUserId).forEach((p, idx) => {
+                    setTimeout(() => {
+                      window.open(getPersonaUrl(p.id, p.name), '_blank', 'width=950,height=750');
+                    }, idx * 250);
+                  });
+                }}
+                className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded transition-colors"
+                title="Open windows for all other collaborators simultaneously"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Launch 2nd Window
+                ⚡ Launch All 4
               </button>
-              <button
-                onClick={handleCopyLink}
-                className="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors"
-                title="Copy share link with different user identity"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Copied' : 'Copy Link'}
-              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              {COLLABORATION_PERSONAS.map((persona) => {
+                const isMe = persona.id === currentUserId;
+                return (
+                  <div
+                    key={persona.id}
+                    className={`flex items-center justify-between p-1.5 rounded-lg border text-xs transition-colors ${
+                      isMe ? 'bg-slate-50/70 border-slate-200' : 'hover:bg-slate-50 border-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                        style={{ backgroundColor: persona.color }}
+                      >
+                        {persona.initials}
+                      </div>
+                      <span className="font-medium text-slate-800 truncate">
+                        {persona.name}
+                      </span>
+                      {isMe && (
+                        <span className="text-[9px] bg-indigo-50 text-indigo-600 font-mono px-1 py-0.2 rounded">
+                          Current
+                        </span>
+                      )}
+                    </div>
+
+                    {!isMe && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleOpenWindow(persona.id, persona.name)}
+                          className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-medium flex items-center gap-1 transition-colors"
+                          title={`Open ${persona.name} in a new window`}
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Launch
+                        </button>
+                        <button
+                          onClick={() => handleCopyLink(persona.id, persona.name)}
+                          className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors"
+                          title="Copy link"
+                        >
+                          {copiedId === persona.id ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

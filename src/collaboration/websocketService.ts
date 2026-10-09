@@ -4,6 +4,7 @@ type MessageHandler = (message: CollaborationMessage) => void;
 type StatusHandler = (status: ConnectionStatus) => void;
 
 export class WebSocketService {
+  public readonly sessionId: string = `tab_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
   private ws: WebSocket | null = null;
   private url: string;
   private status: ConnectionStatus = 'disconnected';
@@ -84,13 +85,17 @@ export class WebSocketService {
         }
       };
 
-      this.ws.onerror = (error) => {
-        // Log for development debugging without breaking UI
-        console.warn('[WebSocketService] WebSocket error (normal if backend server is not running):', error);
+      this.ws.onerror = (_error) => {
+        // Only log once during initial connection attempt to prevent console flood
+        if (this.reconnectAttempts === 0) {
+          console.warn(`[WebSocketService] WebSocket server not reachable at ${this.url}. Using local BroadcastChannel for peer synchronization.`);
+        }
       };
 
       this.ws.onclose = (event) => {
-        console.info(`[WebSocketService] Closed (code: ${event.code})`);
+        if (this.reconnectAttempts === 0) {
+          console.info(`[WebSocketService] Closed (code: ${event.code})`);
+        }
         this.ws = null;
         if (!this.intentionalClose && !this.isTestingDisconnected) {
           this.handleConnectionLoss();
@@ -149,6 +154,9 @@ export class WebSocketService {
    * Send a collaboration message
    */
   public send(message: CollaborationMessage): void {
+    if (!message.sessionId) {
+      message.sessionId = this.sessionId;
+    }
     const payload = JSON.stringify(message);
 
     // 1. Send over WebSocket if open

@@ -3,6 +3,7 @@ import { GitBranch, ShieldCheck, CheckCircle2, Lock, Cpu, X } from 'lucide-react
 
 const AstTreeViewer = ({ isOpen, onClose, doc, collaborators }) => {
   if (!isOpen || !doc) return null;
+  const blocks = doc.content || doc.blocks || [];
 
   return (
     <aside
@@ -58,10 +59,10 @@ const AstTreeViewer = ({ isOpen, onClose, doc, collaborators }) => {
       {/* Tree Node List */}
       <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Document Root: <code>DocAST ({doc.blocks.length} nodes)</code>
+          Document Root: <code>DocAST ({blocks.length} nodes)</code>
         </div>
 
-        {doc.blocks.map((block, index) => {
+        {blocks.map((block, index) => {
           // Check active user on this node
           const activeUser = collaborators.find((u) => u.currentBlockId === block.id);
 

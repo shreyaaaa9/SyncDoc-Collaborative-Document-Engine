@@ -27,12 +27,15 @@ const useDocumentEditor = (documentId) => {
       setLoading(true);
       setLoadError(null);
       const data = await fetchDocumentById(documentId);
+      const rawBlocks = data?.content || data?.blocks || [];
+      const normalizedBlocks = Array.isArray(rawBlocks)
+        ? rawBlocks.map((b) => (b.id ? b : { ...b, id: generateId() }))
+        : [];
       setDoc({
         ...data,
-        title: data.title || '',
-        blocks: Array.isArray(data.blocks)
-          ? data.blocks.map((b) => (b.id ? b : { ...b, id: generateId() }))
-          : [],
+        title: data?.title || '',
+        content: normalizedBlocks,
+        blocks: normalizedBlocks,
       });
       setMeta({ version: data.version ?? data.__v ?? null, updatedAt: data.updatedAt ?? null });
       setSaveStatus('saved');

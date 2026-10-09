@@ -21,8 +21,11 @@ export class YjsService {
       return this.currentDoc;
     }
 
-    // Clean up previous doc if any
-    this.destroy();
+    // Clean up previous doc if any without wiping listeners
+    if (this.currentDoc) {
+      this.currentDoc.destroy();
+      this.currentDoc = null;
+    }
 
     this.currentDocId = documentId;
     this.currentDoc = new Y.Doc();
