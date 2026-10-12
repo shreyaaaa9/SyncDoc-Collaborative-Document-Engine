@@ -132,6 +132,14 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Real-time blocks sync — broadcast full blocks array to all peers in the room
+  socket.on("blocks-update", ({ documentId, blocks }) => {
+    if (!documentId || !Array.isArray(blocks)) return;
+    // Broadcast to everyone else in the room (not the sender)
+    socket.to(documentId).emit("blocks-update", { documentId, blocks });
+    console.log(`Blocks update broadcast for document: ${documentId}, blocks: ${blocks.length}`);
+  });
+
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
   });

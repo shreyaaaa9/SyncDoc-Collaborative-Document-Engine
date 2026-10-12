@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchDocumentById, updateDocument, getInitialDocument } from '../../api/documentApi';
 import HeadingBlock from './HeadingBlock';
 import ParagraphBlock from './ParagraphBlock';
@@ -13,6 +13,7 @@ import NotificationList from '../collaboration/NotificationList';
 import PresenceIndicator from '../collaboration/PresenceIndicator';
 
 import { useCollaboration } from '../../hooks/useCollaboration';
+import useYjsSync from '../../hooks/useYjsSync';
 import {
   Trash2,
   Plus,
@@ -36,21 +37,23 @@ const BlockEditor = ({ documentId, onBack }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [focusedBlockId, setFocusedBlockId] = useState('blk_para_2');
 
+  // Stable ref so handleDocumentUpdate can call broadcastBlocks
+  // without creating a circular hook dependency
+  const broadcastRef = useRef(null);
+
   // Callback to update block content from conflict resolution or history restore
   const handleDocumentUpdate = useCallback((target, newContent) => {
     setDoc((prev) => {
       if (!prev) return prev;
       const currentBlocks = prev.content || prev.blocks || [];
+      let updated;
       if (target === '__FULL_RESTORE__') {
-        const restored = Array.isArray(newContent) ? newContent : [];
-        return { ...prev, content: restored, blocks: restored };
+        updated = Array.isArray(newContent) ? newContent : [];
+      } else {
+        updated = currentBlocks.map((b) => (b.id === target ? { ...b, content: newContent } : b));
       }
-      const updated = currentBlocks.map((b) => (b.id === target ? { ...b, content: newContent } : b));
-      return {
-        ...prev,
-        content: updated,
-        blocks: updated,
-      };
+      if (broadcastRef.current) broadcastRef.current(updated);
+      return { ...prev, content: updated, blocks: updated };
     });
   }, []);
 
@@ -76,6 +79,31 @@ const BlockEditor = ({ documentId, onBack }) => {
     triggerConflict,
     setCurrentUserBlock,
   } = useCollaboration(handleDocumentUpdate);
+
+  // ── Yjs real-time sync ────────────────────────────────────────────────────
+  // Called when a remote user's changes arrive via Socket.io + Yjs
+  const handleRemoteUpdate = useCallback((remoteBlocks) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      return { ...prev, content: remoteBlocks, blocks: remoteBlocks };
+    });
+    addNotification({
+      type: 'info',
+      title: 'Live Update',
+      message: 'Document updated by another collaborator.',
+    });
+  }, [addNotification]);
+
+  const { broadcastBlocks } = useYjsSync(
+    documentId,
+    handleRemoteUpdate,
+    setConnectionStatus,
+  );
+
+  // Keep the ref in sync with the latest broadcastBlocks function
+  useEffect(() => {
+    broadcastRef.current = broadcastBlocks;
+  }, [broadcastBlocks]);
 
   // Sync document data if changed - backend returns doc.content (AST nodes array)
   useEffect(() => {
@@ -106,6 +134,7 @@ const BlockEditor = ({ documentId, onBack }) => {
       content: updated,
       blocks: updated,
     });
+    broadcastBlocks(updated);
   };
 
   const addBlock = (type) => {
@@ -120,6 +149,7 @@ const BlockEditor = ({ documentId, onBack }) => {
     };
     const updated = [...currentBlocks, newBlock];
     setDoc({ ...doc, content: updated, blocks: updated });
+    broadcastBlocks(updated);
     addNotification({
       type: 'info',
       title: 'Block Added',
@@ -132,6 +162,7 @@ const BlockEditor = ({ documentId, onBack }) => {
     const currentBlocks = doc.content || doc.blocks || [];
     const updated = currentBlocks.filter((b) => b.id !== id);
     setDoc({ ...doc, content: updated, blocks: updated });
+    broadcastBlocks(updated);
     addNotification({
       type: 'info',
       title: 'Block Removed',
